@@ -4,39 +4,24 @@
 
 {% block page_title %}💾 数据备份与恢复{% endblock %}
 
-{% block header_actions %}
-    <button class="btn btn-home" onclick="window.location.href='/dashboard'">🏠 返回仪表盘</button>
-{% endblock %}
+{% block header_actions %}{% endblock %}
 
 {% block extra_head %}
 <style>
-/* 页面头部容器 - 与智能预测页面一致 */
-.header {
+/* 页面子标题行 - 标题下方的操作按钮 */
+.page-sub-actions {
     display: flex;
-    justify-content: space-between;
     align-items: center;
-    margin-bottom: 24px;
-    padding-bottom: 16px;
+    gap: 10px;
+    margin: -8px 0 20px 0;
+    padding-bottom: 14px;
     border-bottom: 2px solid #ecf0f1;
     flex-wrap: wrap;
-    gap: 12px;
 }
-.header h1 {
-    color: #2c3e50;
-    font-size: 1.6em;
-    margin: 0;
-}
-.header-actions {
-    display: flex;
-    gap: 10px;
-    flex-wrap: wrap;
-    align-items: center;
-}
-.header-actions .btn {
+.page-sub-actions .btn-home {
     font-size: 14px;
     padding: 8px 16px;
     font-weight: 600;
-    line-height: 1.4;
     border-radius: 10px;
     border: none;
     cursor: pointer;
@@ -44,44 +29,31 @@
     display: inline-flex;
     align-items: center;
     gap: 6px;
-    white-space: nowrap;
-    text-decoration: none;
-    width: auto !important;
-    flex: none !important;
-}
-.header-actions .btn-home {
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     color: white;
     box-shadow: 0 3px 12px rgba(102, 126, 234, 0.3);
+    text-decoration: none;
+    line-height: 1.4;
+    white-space: nowrap;
 }
-.header-actions .btn-home:hover {
+.page-sub-actions .btn-home:hover {
     transform: translateY(-2px);
     box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
 }
-.header-actions .btn-home:active {
+.page-sub-actions .btn-home:active {
     transform: translateY(0);
     box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
 }
 @media (max-width: 768px) {
-    .header {
-        flex-direction: column;
-        align-items: flex-start;
-        gap: 10px;
+    .page-sub-actions {
+        margin-top: -6px;
         margin-bottom: 16px;
-        padding-bottom: 12px;
+        padding-bottom: 10px;
+        gap: 8px;
     }
-    .header h1 {
-        font-size: 1.2em;
-    }
-    .header-actions {
-        width: 100%;
-    }
-    .header-actions .btn {
+    .page-sub-actions .btn-home {
         font-size: 13px;
-        padding: 7px 12px;
-        width: auto !important;
-        min-width: unset;
-        flex-shrink: 0;
+        padding: 6px 12px;
     }
 }
 
@@ -460,6 +432,10 @@
 {% endblock %}
 
 {% block content %}
+<!-- 页面子标题行 - 标题下方 -->
+<div class="page-sub-actions">
+    <button class="btn-home" onclick="window.location.href='/dashboard'">🏠 返回仪表盘</button>
+</div>
 <!-- 统计卡片 -->
 <div class="backup-stats">
     <div class="backup-stat-card">
@@ -545,7 +521,7 @@
         </div>
     </div>
 </div>
-{% endblock %}
+{% endblock content %}
 
 {% block extra_scripts %}
 <script>

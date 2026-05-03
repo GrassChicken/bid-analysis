@@ -54,3 +54,29 @@ def dashboard_page():
         latest_prediction=latest_prediction,
         recent_accuracy=accuracy_data
     )
+
+
+@dashboard_bp.route('/api/dashboard/stats')
+@login_required
+def api_dashboard_stats():
+    """仪表盘统计数据 API"""
+    user_id = session.get('user_id')
+    
+    bid_stats = bid_record_model.get_statistics(user_id)
+    pred_stats = prediction_model.get_statistics(user_id)
+    
+    return jsonify({
+        'success': True,
+        'bid_stats': {
+            'total_count': bid_stats['total_count'],
+            'today_count': bid_stats['today_count'],
+            'method_distribution': bid_stats['method_distribution'],
+            'k1_distribution': bid_stats['k1_distribution'],
+            'q1_distribution': bid_stats.get('q1_distribution', {}),
+            'location_distribution': bid_stats.get('location_distribution', {}),
+        },
+        'pred_stats': {
+            'month_predictions': pred_stats['month_predictions'],
+            'ai_used_count': pred_stats['ai_used_count'],
+        }
+    })

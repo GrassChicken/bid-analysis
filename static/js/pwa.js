@@ -3,11 +3,16 @@
  */
 
 // VAPID 公钥（用于推送通知）
-// 从服务器动态获取
+// 注意：推送通知功能暂未实现，暂时跳过获取
 let VAPID_PUBLIC_KEY = '';
 
-// 获取 VAPID 公钥
+// 获取 VAPID 公钥（推送通知功能未启用时跳过）
 async function fetchVapidPublicKey() {
+  // TODO: 推送通知功能开发后启用
+  console.log('ℹ️ 推送通知功能暂未启用，跳过 VAPID 公钥获取');
+  return;
+  
+  /* 推送通知启用后取消注释：
   try {
     const response = await fetch('/api/push/vapid-public-key');
     const data = await response.json();
@@ -16,6 +21,7 @@ async function fetchVapidPublicKey() {
   } catch (error) {
     console.error('❌ 获取 VAPID 公钥失败:', error);
   }
+  */
 }
 
 // 存储推送订阅
