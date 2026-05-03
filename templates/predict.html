@@ -1,0 +1,237 @@
+{% extends "base.html" %}
+
+{% block title %}🎯 智能预测 - 工程开标数据智能分析平台 V6.0{% endblock %}
+
+{% block page_title %}🎯 智能预测{% endblock %}
+
+{% block header_actions %}
+    <button class="btn btn-home" onclick="window.location.href='/dashboard'">🏠 返回仪表盘</button>
+    <button class="btn btn-history" onclick="window.location.href='/prediction/history'">📋 预测历史</button>
+    <button class="btn btn-accuracy" onclick="window.location.href='/accuracy'">📈 准确率分析</button>
+{% endblock %}
+
+{% block extra_head %}
+    <link rel="stylesheet" href="/static/css/predict.css">
+{% endblock %}
+
+{% block content %}
+<!-- 页面头部横幅 -->
+<div class="hero-banner">
+    <div class="hero-icon">🎯</div>
+    <div class="hero-text">
+        <h2>智能预测引擎</h2>
+        <p>基于 20+ 统计算法，精准预测开标数据趋势</p>
+    </div>
+    <div class="hero-decoration"></div>
+</div>
+
+<!-- 预测参数输入卡片 -->
+<div class="predict-panel">
+    <div class="panel-header">
+        <div class="panel-icon">📋</div>
+        <div>
+            <h3>预测参数设置</h3>
+            <p class="panel-desc">配置筛选条件，获取最精准的预测结果</p>
+        </div>
+    </div>
+    
+    <div class="predict-form">
+        <!-- 项目名称 -->
+        <div class="form-group form-group--full">
+            <label for="projectName" class="form-label">
+                <span class="label-icon">📝</span>
+                <span>项目名称</span>
+                <span class="required">*</span>
+            </label>
+            <input type="text" id="projectName" class="form-input" placeholder="请输入项目名称（必填）" autocomplete="off" onblur="this.value = this.value.trim()">
+        </div>
+        
+        <!-- 开标地点 + 方法类别 -->
+        <div class="form-row form-row--two">
+            <div class="form-group">
+                <label for="locationFilter" class="form-label">
+                    <span class="label-icon">📍</span>
+                    <span>开标地点</span>
+                </label>
+                <div class="select-wrapper">
+                    <select id="locationFilter" class="form-select" onchange="updateDataCount()">
+                        <option value="">不限地点</option>
+                    </select>
+                </div>
+            </div>
+            <div class="form-group">
+                <label for="methodFilter" class="form-label">
+                    <span class="label-icon">📂</span>
+                    <span>方法类别</span>
+                </label>
+                <div class="select-wrapper">
+                    <select id="methodFilter" class="form-select" onchange="updateDataCount()">
+                        <option value="">不限方法</option>
+                        <option value="1">方法 1</option>
+                        <option value="2">方法 2</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 日期范围 -->
+        <div class="form-row form-row--two">
+            <div class="form-group">
+                <label for="dateFrom" class="form-label">
+                    <span class="label-icon">📅</span>
+                    <span>开始日期</span>
+                </label>
+                <input type="date" id="dateFrom" class="form-input form-input--date" onchange="updateDataCount()">
+            </div>
+            <div class="form-group">
+                <label for="dateTo" class="form-label">
+                    <span class="label-icon">📅</span>
+                    <span>结束日期</span>
+                </label>
+                <input type="date" id="dateTo" class="form-input form-input--date" onchange="updateDataCount()">
+            </div>
+        </div>
+        
+        <!-- 数据条数显示 -->
+        <div class="data-count-info">
+            <div class="data-count-main">
+                <span class="data-count-icon">📊</span>
+                <span class="data-count-label">可用数据</span>
+                <span class="data-count-value" id="dataCount">-</span>
+                <span class="data-count-unit">条</span>
+            </div>
+            <div class="data-count-detail">
+                <span class="detail-item">
+                    <span class="detail-dot detail-dot--k1"></span>
+                    K1 有效 <strong id="k1Count">-</strong>
+                </span>
+                <span class="detail-item">
+                    <span class="detail-dot detail-dot--q1"></span>
+                    Q1 有效 <strong id="q1Count">-</strong>
+                </span>
+            </div>
+        </div>
+        
+        <!-- 预测按钮 -->
+        <button class="btn-predict" onclick="predict()">
+            <span class="btn-predict__icon">🚀</span>
+            <span class="btn-predict__text">
+                <span class="btn-predict__main">开始预测</span>
+                <span class="btn-predict__sub">20 种算法并行分析</span>
+            </span>
+            <span class="btn-predict__arrow">→</span>
+        </button>
+    </div>
+</div>
+
+<!-- 加载动画 -->
+<div class="loading hidden" id="loading">
+    <div class="loading-container">
+        <div class="loading-spinner">
+            <div class="spinner-ring"></div>
+            <div class="spinner-ring"></div>
+            <div class="spinner-ring"></div>
+            <div class="spinner-core">🎯</div>
+        </div>
+        <div class="loading-text" id="loadingText">正在运行 20 种统计算法分析数据</div>
+        <div class="loading-dots">
+            <span></span><span></span><span></span>
+        </div>
+        <div class="loading-sub">预测可能需要 1-3 秒，请稍候...</div>
+        
+        <!-- 加载进度条 -->
+        <div class="loading-progress">
+            <div class="loading-progress__bar" id="loadingProgressBar"></div>
+        </div>
+    </div>
+</div>
+
+<!-- 预测结果 -->
+<div class="section hidden" id="resultSection">
+    <div class="section-header">
+        <div class="section-header__icon">📊</div>
+        <div>
+            <h3 class="section-title">预测结果</h3>
+            <p class="section-desc">基于统计算法的综合分析结果</p>
+        </div>
+        <div class="section-header__actions">
+            <button class="export-btn" onclick="exportCurrentPrediction('excel')" title="导出为Excel">📊 Excel</button>
+            <button class="export-btn export-btn--pdf" onclick="exportCurrentPrediction('pdf')" title="导出为PDF">📄 PDF</button>
+        </div>
+    </div>
+    <div class="result-grid" id="resultGrid"></div>
+</div>
+
+<!-- 重复项目确认模态框 -->
+<div class="modal-overlay" id="duplicateModal">
+    <div class="modal-dialog">
+        <div class="modal-header">
+            <div class="modal-header-icon">⚠️</div>
+            <h3 class="modal-title">该项目已预测过</h3>
+            <button class="modal-close" onclick="closeDuplicateModal()">✕</button>
+        </div>
+        <div class="modal-body">
+            <div class="modal-project-name" id="modalProjectName"></div>
+            
+            <div class="modal-compare">
+                <div class="modal-col modal-col--old">
+                    <div class="modal-col-title">
+                        <span class="modal-col-icon">📋</span>
+                        上次预测
+                    </div>
+                    <div class="modal-col-time" id="modalOldTime"></div>
+                    <div class="modal-fields">
+                        <div class="modal-field">
+                            <span class="modal-field-label">方法类别</span>
+                            <span class="modal-field-value" id="modalOldMethod"></span>
+                        </div>
+                        <div class="modal-field">
+                            <span class="modal-field-label">K1 值</span>
+                            <span class="modal-field-value" id="modalOldK1"></span>
+                        </div>
+                        <div class="modal-field">
+                            <span class="modal-field-label">Q1 值</span>
+                            <span class="modal-field-value" id="modalOldQ1"></span>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-col modal-col--new">
+                    <div class="modal-col-title">
+                        <span class="modal-col-icon">🔮</span>
+                        本次预测
+                    </div>
+                    <div class="modal-fields">
+                        <div class="modal-field">
+                            <span class="modal-field-label">方法类别</span>
+                            <span class="modal-field-value" id="modalNewMethod"></span>
+                        </div>
+                        <div class="modal-field">
+                            <span class="modal-field-label">K1 值</span>
+                            <span class="modal-field-value" id="modalNewK1"></span>
+                        </div>
+                        <div class="modal-field">
+                            <span class="modal-field-label">Q1 值</span>
+                            <span class="modal-field-value" id="modalNewQ1"></span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="modal-changes" id="modalChanges"></div>
+            
+            <div class="modal-warning">
+                <span class="modal-warning-icon">⚠️</span>
+                覆盖后将清除已有的真实值对比记录
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="modal-btn modal-btn--cancel" onclick="closeDuplicateModal()">取消，查看本次结果</button>
+            <button class="modal-btn modal-btn--confirm" id="modalConfirmBtn" onclick="modalOverwrite()">确认覆盖</button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+    <script src="/static/js/pages/predict.js"></script>
+{% endblock %}

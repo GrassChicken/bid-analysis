@@ -1,0 +1,273 @@
+{% extends "base.html" %}
+
+{% block title %}📊 数据管理 - 工程开标数据智能分析平台 V6.0{% endblock %}
+
+{% block page_title %}📊 数据管理{% endblock %}
+
+{% block header_actions %}
+    <button class="btn btn-dashboard" onclick="window.location.href='/dashboard'">🏠 返回仪表盘</button>
+    <button class="btn btn-predict" onclick="window.location.href='/predict'">🎯 智能预测</button>
+{% endblock %}
+
+{% block extra_head %}
+    <link rel="stylesheet" href="/static/css/data.css">
+{% endblock %}
+
+{% block content %}
+<!-- 统计卡片 -->
+<div class="stats-grid" id="statsGrid">
+    <div class="stat-card stat-blue">
+        <div class="stat-icon">📊</div>
+        <div class="stat-value" id="totalRecords">-</div>
+        <div class="stat-label">总记录数</div>
+    </div>
+    <div class="stat-card stat-green">
+        <div class="stat-icon">📁</div>
+        <div class="stat-value" id="totalProjects">-</div>
+        <div class="stat-label">项目数</div>
+    </div>
+    <div class="stat-card stat-purple">
+        <div class="stat-icon">方法1</div>
+        <div class="stat-value" id="method1Count">-</div>
+        <div class="stat-label">方法 1 类</div>
+    </div>
+    <div class="stat-card stat-orange">
+        <div class="stat-icon">方法2</div>
+        <div class="stat-value" id="method2Count">-</div>
+        <div class="stat-label">方法 2 类</div>
+    </div>
+</div>
+
+<!-- 数据导入 -->
+<div class="section">
+    <div class="section-title">📁 历史开标数据导入</div>
+
+    <!-- 1. 数据导入框 -->
+    <div class="upload-area" id="uploadArea">
+        <div class="upload-icon">📤</div>
+        <p class="upload-text">拖拽 Excel 文件到此处，或点击上传</p>
+        <p class="upload-hint">支持 .xlsx, .xls 格式</p>
+        <input type="file" id="fileInput" accept=".xlsx,.xls" style="display: none;">
+        <button class="btn btn-primary" onclick="document.getElementById('fileInput').click()">📁 选择文件</button>
+    </div>
+
+    <!-- 上传进度条 -->
+    <div id="progressSection" class="hidden">
+        <div class="progress-container">
+            <div class="progress-header">
+                <span id="progressStatus">📊 正在导入数据...</span>
+                <span id="progressPercent">0%</span>
+            </div>
+            <div class="progress-bar-container">
+                <div id="progressBar" class="progress-bar"></div>
+            </div>
+            <div id="progressText" class="progress-text">正在导入数据，请稍候...</div>
+        </div>
+    </div>
+
+    <!-- 2. 数据导入说明（可折叠） -->
+    <div class="import-guide">
+        <div class="guide-header" onclick="toggleGuide()">
+            <span>📋 数据导入说明</span>
+            <span class="guide-arrow" id="guideArrow">▼</span>
+        </div>
+        <div class="guide-body" id="guideBody">
+            <div class="guide-grid">
+                <div class="guide-block">
+                    <h4>📊 支持字段</h4>
+                    <ul>
+                        <li><strong>开标日期</strong> (必填) — YYYY-MM-DD 格式</li>
+                        <li><strong>开标时间</strong> (必填) — HH:MM 格式</li>
+                        <li><strong>项目名称</strong> (必填) — 项目唯一标识</li>
+                        <li><strong>开标地点</strong> (可选) — 地点名称</li>
+                        <li><strong>方法类别</strong> (必填) — 1 或 2</li>
+                    </ul>
+                </div>
+                <div class="guide-block">
+                    <h4>🔢 参数范围说明</h4>
+                    <ul>
+                        <li><strong>K2 值</strong> (可选) — 范围 <code>0.86～1.00</code>，间隔 <code>0.01</code></li>
+                        <li><strong>K1 值</strong> (可选) — 范围 <code>0.950～0.980</code>，间隔 <code>0.005</code></li>
+                        <li><strong>Q1 值</strong> (可选) — 范围 <code>0.65～0.85</code>，间隔 <code>0.05</code></li>
+                    </ul>
+                </div>
+                <div class="guide-block">
+                    <h4>📥 操作指南</h4>
+                    <ol>
+                        <li>下载 Excel 模板</li>
+                        <li>按字段要求填写数据</li>
+                        <li>检查数据格式和参数范围</li>
+                        <li>上传文件进行导入</li>
+                    </ol>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 3. 模板下载 + 查看样例 -->
+    <div class="template-actions">
+        <button class="btn btn-primary" onclick="downloadTemplate()">📥 下载 Excel 模板</button>
+        <button class="btn btn-secondary" onclick="showExample()">📋 查看样例</button>
+    </div>
+</div>
+
+<!-- 4. 样例展示（默认隐藏，点击"查看样例"后显示） -->
+<div class="section hidden" id="exampleSection">
+    <div class="section-title">📋 Excel 样例数据</div>
+    <div class="example-table-wrapper">
+        <table id="exampleTable" class="example-table"></table>
+    </div>
+    <div class="example-actions">
+        <button class="btn btn-secondary" onclick="document.getElementById('exampleSection').classList.add('hidden')">✖ 关闭样例</button>
+    </div>
+</div>
+
+<!-- 数据预览与过滤 -->
+<div class="section">
+    <div class="section-title">🔍 数据预览与过滤</div>
+
+    <!-- 顶部全局过滤器 -->
+    <div class="filter-section">
+        <div class="filter-grid">
+            <div class="filter-item">
+                <label for="locationFilter">📍 开标地点</label>
+                <select id="locationFilter" onchange="applyFilters()">
+                    <option value="">全部地点</option>
+                </select>
+                <span class="filter-hint">按地点筛选数据</span>
+            </div>
+            <div class="filter-item">
+                <label for="methodFilter">📂 方法类别</label>
+                <select id="methodFilter" onchange="applyFilters()">
+                    <option value="">全部方法</option>
+                    <option value="1">方法 1</option>
+                    <option value="2">方法 2</option>
+                </select>
+                <span class="filter-hint">按方法类别筛选</span>
+            </div>
+            <div class="filter-item">
+                <label for="dateFromFilter">📅 开始日期</label>
+                <input type="date" id="dateFromFilter" onchange="applyFilters()">
+                <span class="filter-hint">起始日期（含当天）</span>
+            </div>
+            <div class="filter-item">
+                <label for="dateToFilter">📅 结束日期</label>
+                <input type="date" id="dateToFilter" onchange="applyFilters()">
+                <span class="filter-hint">截止日期（含当天）</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- 操作按钮 -->
+    <div class="action-buttons">
+        <button class="btn btn-secondary" onclick="refreshData()">🔄 刷新</button>
+        <button class="btn btn-warning" onclick="resetAllFilters()">✖ 重置过滤</button>
+        <button class="btn btn-success" onclick="exportData()">📥 导出数据</button>
+        <button class="btn btn-danger" onclick="toggleSelectAll()">☑️ 全选/取消</button>
+        <button class="btn btn-danger" onclick="deleteSelected()" id="deleteSelectedBtn">🗑️ 删除选中</button>
+    </div>
+
+    <!-- 数据信息（表格上方） -->
+    <div class="data-info" id="dataInfo"></div>
+
+    <!-- 数据表格 -->
+    <div class="table-wrapper">
+        <table id="dataTable" class="data-table">
+            <thead>
+                <tr class="filter-row">
+                    <th class="checkbox-cell">
+                        <input type="checkbox" id="selectAllCheckbox" onchange="toggleSelectAll()">
+                    </th>
+                    <th>
+                        <div class="th-label">序号</div>
+                    </th>
+                    <th>
+                        <div class="th-label">项目名称</div>
+                        <input type="text" class="col-filter" id="fProject" placeholder="搜索项目..." oninput="applyColumnFilters()">
+                    </th>
+                    <th>
+                        <div class="th-label">开标日期</div>
+                        <input type="date" class="col-filter" id="fDate" onchange="applyColumnFilters()">
+                    </th>
+                    <th>
+                        <div class="th-label">开标地点</div>
+                        <input type="text" class="col-filter" id="fLocation" placeholder="搜索地点..." oninput="applyColumnFilters()">
+                    </th>
+                    <th>
+                        <div class="th-label">方法类别</div>
+                        <select class="col-filter" id="fMethod" onchange="applyColumnFilters()">
+                            <option value="">全部</option>
+                            <option value="1">方法1</option>
+                            <option value="2">方法2</option>
+                        </select>
+                    </th>
+                    <th>
+                        <div class="th-label">K2值</div>
+                        <input type="text" class="col-filter" id="fK2" placeholder="搜索..." oninput="applyColumnFilters()">
+                    </th>
+                    <th>
+                        <div class="th-label">K1值</div>
+                        <input type="text" class="col-filter" id="fK1" placeholder="搜索..." oninput="applyColumnFilters()">
+                    </th>
+                    <th>
+                        <div class="th-label">Q1值</div>
+                        <input type="text" class="col-filter" id="fQ1" placeholder="搜索..." oninput="applyColumnFilters()">
+                    </th>
+                    <th>
+                        <div class="th-label">导入时间</div>
+                        <input type="text" class="col-filter" id="fImport" placeholder="搜索..." oninput="applyColumnFilters()">
+                    </th>
+                    <th>
+                        <div class="th-label">操作</div>
+                    </th>
+                </tr>
+            </thead>
+            <tbody id="tableBody"></tbody>
+        </table>
+    </div>
+    <div class="empty-state" id="dataEmptyState" style="display:none;">
+        <div class="empty-icon">📝</div>
+        <h3>暂无数据</h3>
+        <p>请先导入历史开标数据</p>
+    </div>
+
+    <!-- 分页 -->
+    <div class="pagination" id="pagination"></div>
+</div>
+
+<!-- 清空数据按钮 -->
+<div class="section section-danger">
+    <div class="danger-card">
+        <h3>⚠️ 危险操作</h3>
+        <p>清空全部数据将不可恢复，请谨慎操作。</p>
+        <button class="btn btn-danger" onclick="clearAllData()">🗑️ 清空全部数据</button>
+    </div>
+</div>
+
+<!-- 数据分布可视化 -->
+<div class="section hidden" id="chartsSection">
+    <div class="section-title">📊 数据分布可视化</div>
+    
+    <!-- 方法类别饼图 -->
+    <div class="chart-container chart-pie">
+        <canvas id="methodChart"></canvas>
+    </div>
+    
+    <!-- K2/K1/Q1 值分布柱状图 -->
+    <div class="charts-grid">
+        <div class="chart-container">
+            <canvas id="k2Chart"></canvas>
+        </div>
+        <div class="chart-container">
+            <canvas id="k1Chart"></canvas>
+        </div>
+        <div class="chart-container">
+            <canvas id="q1Chart"></canvas>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+    <script src="/static/js/pages/data.js"></script>
+{% endblock %}

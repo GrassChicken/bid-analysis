@@ -1,0 +1,56 @@
+{
+  "name": "工程开标数据智能分析平台 V6.0",
+  "short_name": "开标数据 V6",
+  "description": "专业的工程开标数据分析与智能预测平台",
+  "start_url": "/dashboard",
+  "display": "standalone",
+  "background_color": "#f8f9fa",
+  "theme_color": "#667eea",
+  "orientation": "any",
+  "icons": [
+    {
+      "src": "/static/icons/icon-72.png",
+      "sizes": "72x72",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/static/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/static/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["business", "productivity", "utilities"],
+  "shortcuts": [
+    {
+      "name": "数据看板",
+      "url": "/dashboard",
+      "description": "查看数据概览"
+    },
+    {
+      "name": "数据管理",
+      "url": "/data",
+      "description": "管理开标数据"
+    },
+    {
+      "name": "智能预测",
+      "url": "/predict",
+      "description": "进行参数预测"
+    },
+    {
+      "name": "预测历史",
+      "url": "/prediction/history",
+      "description": "查看预测记录"
+    }
+  ],
+  "scope": "/",
+  "lang": "zh-CN",
+  "dir": "ltr"
+}

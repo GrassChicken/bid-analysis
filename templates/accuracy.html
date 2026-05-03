@@ -1,0 +1,778 @@
+{% extends "base.html" %}
+
+{% block title %}📈 预测准确率分析 - 工程开标数据智能分析平台 V6.0{% endblock %}
+
+{% block page_title %}📈 预测准确率分析{% endblock %}
+
+{% block header_actions %}
+    <button class="btn btn-dashboard" onclick="window.location.href='/dashboard'">🏠 返回仪表盘</button>
+    <button class="btn btn-predict" onclick="window.location.href='/predict'">🎯 智能预测</button>
+    <button class="btn btn-history" onclick="window.location.href='/prediction/history'">📋 预测历史</button>
+{% endblock %}
+
+{% block extra_head %}
+    <link rel="stylesheet" href="/static/css/accuracy.css">
+{% endblock %}
+
+{% block content %}
+<!-- 页面头部横幅 -->
+<div class="hero-banner">
+    <div class="hero-icon">📈</div>
+    <div class="hero-text">
+        <h2>预测准确率分析</h2>
+        <p>对比预测值与真实值，评估预测效果</p>
+    </div>
+</div>
+
+<!-- 准确率总览卡片 -->
+<div class="stats-grid" id="statsGrid">
+    <div class="stat-card stat-blue">
+        <div class="stat-card__icon">📊</div>
+        <div class="stat-card__label">总预测数</div>
+        <div class="stat-card__value" id="statTotal">-</div>
+    </div>
+    <div class="stat-card stat-green">
+        <div class="stat-card__icon">✅</div>
+        <div class="stat-card__label">已对比</div>
+        <div class="stat-card__value" id="statChecked">-</div>
+    </div>
+    <div class="stat-card stat-orange">
+        <div class="stat-card__icon">🎯</div>
+        <div class="stat-card__label">方法类别准确率</div>
+        <div class="stat-card__value" id="statMethod">-</div>
+    </div>
+    <div class="stat-card stat-purple">
+        <div class="stat-card__icon">📏</div>
+        <div class="stat-card__label">K1 精准率</div>
+        <div class="stat-card__value" id="statK1">-</div>
+    </div>
+    <div class="stat-card stat-cyan">
+        <div class="stat-card__icon">🔵</div>
+        <div class="stat-card__label">Q1 精准率</div>
+        <div class="stat-card__value" id="statQ1">-</div>
+    </div>
+</div>
+
+<!-- 偏差分布 -->
+<div class="distribution-panel" id="distPanel" style="display:none;">
+    <div class="dist-panel__header">
+        <div class="dist-panel__icon">📊</div>
+        <div>
+            <h3>偏差分布统计</h3>
+            <p class="dist-panel__desc">基于已录入真实值的预测记录</p>
+        </div>
+    </div>
+    <div class="dist-panel__body">
+        <div class="dist-row">
+            <div class="dist-row__label">🎯 K1 值</div>
+            <div class="dist-bar">
+                <div class="dist-bar__segment dist-bar--accurate" id="k1AccBar" style="width:0%"></div>
+                <div class="dist-bar__segment dist-bar--normal" id="k1NormBar" style="width:0%"></div>
+                <div class="dist-bar__segment dist-bar--deviated" id="k1DevBar" style="width:0%"></div>
+            </div>
+            <div class="dist-row__legend">
+                <span class="legend-item"><span class="legend-dot legend--accurate"></span>精准 <strong id="k1AccLabel">0</strong></span>
+                <span class="legend-item"><span class="legend-dot legend--normal"></span>一般 <strong id="k1NormLabel">0</strong></span>
+                <span class="legend-item"><span class="legend-dot legend--deviated"></span>偏差大 <strong id="k1DevLabel">0</strong></span>
+            </div>
+        </div>
+        <div class="dist-row">
+            <div class="dist-row__label">⚙️ Q1 值</div>
+            <div class="dist-bar">
+                <div class="dist-bar__segment dist-bar--accurate" id="q1AccBar" style="width:0%"></div>
+                <div class="dist-bar__segment dist-bar--normal" id="q1NormBar" style="width:0%"></div>
+                <div class="dist-bar__segment dist-bar--deviated" id="q1DevBar" style="width:0%"></div>
+            </div>
+            <div class="dist-row__legend">
+                <span class="legend-item"><span class="legend-dot legend--accurate"></span>精准 <strong id="q1AccLabel">0</strong></span>
+                <span class="legend-item"><span class="legend-dot legend--normal"></span>一般 <strong id="q1NormLabel">0</strong></span>
+                <span class="legend-item"><span class="legend-dot legend--deviated"></span>偏差大 <strong id="q1DevLabel">0</strong></span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 准确率趋势图 -->
+<div class="trend-panel" id="trendPanel" style="display:none;">
+    <div class="trend-panel__header">
+        <div class="trend-panel__icon">📈</div>
+        <div>
+            <h3>准确率趋势（近12个月）</h3>
+            <p class="trend-panel__desc">展示每月 K1/Q1 精准率变化趋势</p>
+        </div>
+    </div>
+    <div class="trend-panel__body">
+        <canvas id="trendChart" height="300"></canvas>
+        <div class="trend-empty" id="trendEmpty" style="display:none;">
+            <div class="trend-empty__icon">📊</div>
+            <p>暂无趋势数据，请先录入真实值</p>
+        </div>
+    </div>
+</div>
+
+<!-- 筛选面板 -->
+<div class="filter-panel">
+    <div class="filter-row">
+        <div class="filter-group filter-group--keyword">
+            <label class="filter-label">🔍 关键字搜索</label>
+            <input type="text" id="keywordInput" class="filter-input" placeholder="输入项目名称模糊搜索..." oninput="debounceSearch()">
+        </div>
+        <div class="filter-group">
+            <label class="filter-label">📋 筛选状态</label>
+            <select id="statusFilter" class="filter-select" onchange="applyFilter()">
+                <option value="">全部记录</option>
+                <option value="checked">✅ 已对比</option>
+                <option value="unchecked">⏳ 待录入真实值</option>
+            </select>
+        </div>
+        <div class="filter-group filter-group--action">
+            <label class="filter-label">🤖 自动匹配</label>
+            <button class="auto-match-btn" onclick="autoMatchActual()">📥 一键匹配真实值</button>
+        </div>
+        <div class="filter-group filter-group--action">
+            <label class="filter-label">📤 导出</label>
+            <button class="export-btn" onclick="exportAccuracy()">📊 导出 Excel</button>
+        </div>
+    </div>
+</div>
+
+<!-- 对比记录卡片列表 -->
+<div class="history-section">
+    <div class="history-section__header">
+        <div class="history-section__title">📊 对比记录</div>
+        <div class="history-section__count" id="totalCount"></div>
+    </div>
+
+    <div id="contentArea">
+        <div class="cards-grid" id="cardsGrid"></div>
+
+        <!-- 空状态 -->
+        <div class="empty-state hidden" id="emptyState">
+            <div class="empty-state__icon">📚</div>
+            <h3 class="empty-state__title">暂无预测记录</h3>
+            <p class="empty-state__desc">还没有任何预测记录，先去进行预测吧！</p>
+            <button class="empty-state__btn" onclick="window.location.href='/predict'">🎯 去预测</button>
+        </div>
+    </div>
+
+    <!-- 分页 -->
+    <div class="pagination" id="pagination"></div>
+</div>
+
+<!-- 录入真实值弹窗 -->
+<div id="editModal" class="confirm-overlay" style="display:none;" onclick="if(event.target===this)closeEditModal()">
+    <div class="edit-box">
+        <div class="edit-box__header">
+            <span class="edit-box__icon">✏️</span>
+            <h3 class="edit-box__title">录入真实值</h3>
+        </div>
+        <div class="edit-box__body">
+            <div class="edit-field">
+                <label class="edit-label">🎯 方法类别真实值</label>
+                <select id="editMethod" class="edit-input" onchange="toggleQ1Field()">
+                    <option value="">未录入</option>
+                    <option value="1">方法 1</option>
+                    <option value="2">方法 2</option>
+                </select>
+            </div>
+            <div class="edit-field">
+                <label class="edit-label">📊 K1 真实值</label>
+                <input type="text" id="editK1" class="edit-input" placeholder="如 0.965">
+            </div>
+            <div class="edit-field">
+                <label class="edit-label">⚙️ Q1 真实值</label>
+                <input type="text" id="editQ1" class="edit-input" placeholder="如 0.80">
+            </div>
+        </div>
+        <div class="edit-box__footer">
+            <button class="edit-btn edit-btn--cancel" onclick="closeEditModal()">取消</button>
+            <button class="edit-btn edit-btn--save" onclick="saveActual()">💾 保存</button>
+        </div>
+    </div>
+</div>
+
+<!-- 匹配结果弹窗 -->
+<div id="matchResultModal" class="confirm-overlay" style="display:none;" onclick="if(event.target===this)closeMatchResultModal()">
+    <div class="match-result-box">
+        <div class="match-result-box__header">
+            <span class="match-result-box__icon" id="matchResultIcon">✅</span>
+            <h3 class="match-result-box__title" id="matchResultTitle">匹配完成</h3>
+        </div>
+        <div class="match-result-box__body" id="matchResultBody">
+            <div class="result-row result-row--success">
+                <span class="result-row__label">成功匹配</span>
+                <span class="result-row__value" id="matchCountValue">0 条</span>
+            </div>
+            <div class="result-row result-row--warn">
+                <span class="result-row__label">已录入跳过</span>
+                <span class="result-row__value" id="skipCountValue">0 条</span>
+            </div>
+        </div>
+        <div class="match-result-box__footer">
+            <button class="match-result-btn" onclick="closeMatchResultModal()">确定</button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+    <script>
+        let currentPage = 1;
+        let totalPages = 1;
+        let currentEditId = null;
+        let currentKeyword = '';
+        let searchTimer = null;
+        const PAGE_SIZE = 20;
+
+        document.addEventListener('DOMContentLoaded', function() {
+            loadStats();
+            loadTrend();
+            loadRecords(currentPage);
+        });
+
+        // 防抖搜索
+        function debounceSearch() {
+            var keyword = document.getElementById('keywordInput').value.trim();
+            clearTimeout(searchTimer);
+            searchTimer = setTimeout(function() {
+                currentKeyword = keyword;
+                currentPage = 1;
+                loadRecords(currentPage);
+            }, 400);
+        }
+
+        // 加载趋势图
+        var trendChartInstance = null;
+        function loadTrend() {
+            fetch('/api/accuracy/trend')
+                .then(function(r) { return r.json(); })
+                .then(function(data) {
+                    if (data.success) {
+                        renderTrendChart(data.trend);
+                    }
+                });
+        }
+
+        function renderTrendChart(trend) {
+            var panel = document.getElementById('trendPanel');
+            var emptyEl = document.getElementById('trendEmpty');
+            var canvasEl = document.getElementById('trendChart');
+
+            // 检查是否有数据
+            if (!trend.k1.months.length && !trend.q1.months.length) {
+                panel.style.display = 'none';
+                return;
+            }
+
+            panel.style.display = 'block';
+
+            // 合并所有月份
+            var allMonths = [];
+            trend.k1.months.forEach(function(m) { if (allMonths.indexOf(m) === -1) allMonths.push(m); });
+            trend.q1.months.forEach(function(m) { if (allMonths.indexOf(m) === -1) allMonths.push(m); });
+            allMonths.sort();
+
+            // 填充数据
+            var k1Data = allMonths.map(function(m) {
+                var idx = trend.k1.months.indexOf(m);
+                return idx >= 0 ? trend.k1.accurate_rates[idx] : null;
+            });
+            var q1Data = allMonths.map(function(m) {
+                var idx = trend.q1.months.indexOf(m);
+                return idx >= 0 ? trend.q1.accurate_rates[idx] : null;
+            });
+
+            // 格式化月份标签
+            var labels = allMonths.map(function(m) {
+                return m.substring(2); // 去掉年份前缀，显示 "24-01" 样式
+            });
+
+            if (trendChartInstance) {
+                trendChartInstance.destroy();
+            }
+
+            var ctx = canvasEl.getContext('2d');
+            trendChartInstance = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [
+                        {
+                            label: 'K1 精准率',
+                            data: k1Data,
+                            borderColor: '#3498db',
+                            backgroundColor: 'rgba(52, 152, 219, 0.1)',
+                            tension: 0.3,
+                            fill: true,
+                            pointRadius: 5,
+                            pointHoverRadius: 7,
+                            borderWidth: 2.5
+                        },
+                        {
+                            label: 'Q1 精准率',
+                            data: q1Data,
+                            borderColor: '#9b59b6',
+                            backgroundColor: 'rgba(155, 89, 182, 0.1)',
+                            tension: 0.3,
+                            fill: true,
+                            pointRadius: 5,
+                            pointHoverRadius: 7,
+                            borderWidth: 2.5
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'top',
+                            labels: {
+                                usePointStyle: true,
+                                pointStyle: 'circle',
+                                padding: 20,
+                                font: { size: 13, weight: '600' }
+                            }
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    return context.dataset.label + ': ' + (context.parsed.y !== null ? context.parsed.y + '%' : '无数据');
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            max: 100,
+                            ticks: {
+                                callback: function(value) { return value + '%'; },
+                                stepSize: 20,
+                                font: { size: 12 }
+                            },
+                            grid: {
+                                color: 'rgba(0,0,0,0.05)'
+                            }
+                        },
+                        x: {
+                            grid: {
+                                display: false
+                            },
+                            ticks: {
+                                font: { size: 11 }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // 一键匹配真实值
+        function autoMatchActual() {
+            var btn = document.querySelector('.auto-match-btn');
+            btn.disabled = true;
+            btn.textContent = '⏳ 匹配中...';
+
+            fetch('/api/accuracy/auto-match', { method: 'POST' })
+                .then(function(r) { return r.json(); })
+                .then(function(data) {
+                    btn.disabled = false;
+                    btn.textContent = '📥 一键匹配真实值';
+
+                    if (data.success) {
+                        // 记录操作日志
+                        fetch('/api/operation-logs/log', {
+                            method: 'POST',
+                            headers: {'Content-Type': 'application/json'},
+                            body: JSON.stringify({
+                                action: 'AUTO_MATCH',
+                                module: '预测准确率',
+                                table_name: 'prediction_records',
+                                new_value: {
+                                    matched_count: data.matched_count,
+                                    skipped_count: data.skipped_count,
+                                    total_predictions: data.total_predictions
+                                },
+                                status: 'success'
+                            })
+                        });
+
+                        // 显示弹窗
+                        showMatchResult(data.matched_count, data.skipped_count, data.total_predictions);
+                        loadRecords(currentPage);
+                        loadStats();
+                    } else {
+                        fetch('/api/operation-logs/log', {
+                            method: 'POST',
+                            headers: {'Content-Type': 'application/json'},
+                            body: JSON.stringify({
+                                action: 'AUTO_MATCH',
+                                module: '预测准确率',
+                                table_name: 'prediction_records',
+                                status: 'failed',
+                                error_message: data.error || '未知错误'
+                            })
+                        });
+                        showMatchResult(-1, 0, 0, data.error || '未知错误');
+                    }
+                })
+                .catch(function(error) {
+                    btn.disabled = false;
+                    btn.textContent = '📥 一键匹配真实值';
+                    showMatchResult(-1, 0, 0, '请求失败：' + error);
+                });
+        }
+
+        // 导出 Excel
+        function exportAccuracy() {
+            var status = document.getElementById('statusFilter').value;
+            var keyword = document.getElementById('keywordInput').value.trim();
+            
+            var url = '/api/accuracy/export';
+            var params = [];
+            if (status) params.push('status=' + encodeURIComponent(status));
+            if (keyword) params.push('keyword=' + encodeURIComponent(keyword));
+            if (params.length > 0) url += '?' + params.join('&');
+            
+            // 使用隐藏 iframe 下载
+            var iframe = document.createElement('iframe');
+            iframe.style.display = 'none';
+            iframe.src = url;
+            document.body.appendChild(iframe);
+            
+            setTimeout(function() {
+                document.body.removeChild(iframe);
+            }, 5000);
+        }
+
+        // 显示匹配结果弹窗
+        function showMatchResult(matched, skipped, total, errorMsg) {
+            var modal = document.getElementById('matchResultModal');
+            var isSuccess = errorMsg === undefined;
+            
+            document.getElementById('matchResultIcon').textContent = isSuccess ? '✅' : '❌';
+            document.getElementById('matchResultTitle').textContent = isSuccess ? '匹配完成' : '匹配失败';
+            
+            var bodyEl = document.getElementById('matchResultBody');
+            if (isSuccess) {
+                var statusHtml = '';
+                if (matched > 0) {
+                    statusHtml += '<div class="result-row result-row--success"><span class="result-row__label">成功匹配</span><span class="result-row__value">' + matched + ' 条</span></div>';
+                }
+                if (skipped > 0) {
+                    statusHtml += '<div class="result-row result-row--warn"><span class="result-row__label">已录入跳过</span><span class="result-row__value">' + skipped + ' 条</span></div>';
+                }
+                if (matched === 0 && skipped === 0) {
+                    statusHtml += '<div class="result-row result-row--info"><span class="result-row__label">无匹配数据</span><span class="result-row__value">暂无可匹配的记录</span></div>';
+                }
+                bodyEl.innerHTML = statusHtml;
+            } else {
+                bodyEl.innerHTML = '<div class="result-row result-row--error"><span class="result-row__label">错误信息</span><span class="result-row__value">' + errorMsg + '</span></div>';
+            }
+            
+            modal.style.display = 'flex';
+        }
+
+        function closeMatchResultModal() {
+            document.getElementById('matchResultModal').style.display = 'none';
+        }
+
+        // 加载统计信息
+        function loadStats() {
+            fetch('/api/accuracy/stats')
+                .then(function(r) { return r.json(); })
+                .then(function(data) {
+                    if (data.success) {
+                        var s = data.stats;
+                        document.getElementById('statTotal').textContent = s.total;
+                        document.getElementById('statChecked').textContent = s.checked + '/' + s.total;
+
+                        // 方法准确率
+                        var methodRate = s.method.rate;
+                        var methodEl = document.getElementById('statMethod');
+                        methodEl.textContent = s.method.total > 0 ? methodRate + '%' : '-';
+                        methodEl.style.color = methodRate >= 80 ? '#27ae60' : (methodRate >= 60 ? '#f39c12' : '#e74c3c');
+
+                        // K1 精准率
+                        var k1El = document.getElementById('statK1');
+                        if (s.k1.total > 0) {
+                            var k1Rate = Math.round(s.k1.accurate / s.k1.total * 100);
+                            k1El.textContent = k1Rate + '%';
+                            k1El.style.color = k1Rate >= 60 ? '#27ae60' : (k1Rate >= 30 ? '#f39c12' : '#e74c3c');
+                        } else {
+                            k1El.textContent = '-';
+                        }
+
+                        // Q1 精准率（排除方法1）
+                        var q1El = document.getElementById('statQ1');
+                        if (s.q1_excl.total > 0) {
+                            var q1Rate = Math.round(s.q1_excl.accurate / s.q1_excl.total * 100);
+                            q1El.textContent = q1Rate + '%';
+                            q1El.style.color = q1Rate >= 60 ? '#27ae60' : (q1Rate >= 30 ? '#f39c12' : '#e74c3c');
+                        } else {
+                            q1El.textContent = '-';
+                        }
+
+                        // 偏差分布
+                        if (s.k1.total > 0 || s.q1.total > 0) {
+                            document.getElementById('distPanel').style.display = 'block';
+                        }
+
+                        // K1 偏差条
+                        if (s.k1.total > 0) {
+                            setBar('k1Acc', s.k1.accurate, s.k1.total);
+                            setBar('k1Norm', s.k1.normal, s.k1.total);
+                            setBar('k1Dev', s.k1.deviated, s.k1.total);
+                            document.getElementById('k1AccLabel').textContent = s.k1.accurate;
+                            document.getElementById('k1NormLabel').textContent = s.k1.normal;
+                            document.getElementById('k1DevLabel').textContent = s.k1.deviated;
+                        }
+
+                        // Q1 偏差条
+                        if (s.q1.total > 0) {
+                            setBar('q1Acc', s.q1.accurate, s.q1.total);
+                            setBar('q1Norm', s.q1.normal, s.q1.total);
+                            setBar('q1Dev', s.q1.deviated, s.q1.total);
+                            document.getElementById('q1AccLabel').textContent = s.q1.accurate;
+                            document.getElementById('q1NormLabel').textContent = s.q1.normal;
+                            document.getElementById('q1DevLabel').textContent = s.q1.deviated;
+                        }
+                    }
+                });
+        }
+
+        function setBar(prefix, count, total) {
+            var pct = total > 0 ? (count / total * 100) : 0;
+            document.getElementById(prefix + 'Bar').style.width = pct + '%';
+        }
+
+        // 加载对比记录
+        function loadRecords(page) {
+            var status = document.getElementById('statusFilter').value;
+            var url = '/api/accuracy/records?page=' + page + '&page_size=' + PAGE_SIZE;
+            if (status) url += '&status=' + status;
+            if (currentKeyword) url += '&keyword=' + encodeURIComponent(currentKeyword);
+
+            fetch(url)
+                .then(function(r) { return r.json(); })
+                .then(function(data) {
+                    if (data.success) {
+                        displayRecords(data.records, data.total, page);
+                    }
+                });
+        }
+
+        function displayRecords(records, total, page) {
+            var cardsGrid = document.getElementById('cardsGrid');
+            var emptyState = document.getElementById('emptyState');
+            var totalCount = document.getElementById('totalCount');
+
+            totalCount.textContent = '共 ' + total + ' 条';
+
+            if (records.length === 0) {
+                cardsGrid.innerHTML = '';
+                emptyState.classList.remove('hidden');
+                document.getElementById('pagination').innerHTML = '';
+                return;
+            }
+
+            emptyState.classList.add('hidden');
+
+            cardsGrid.innerHTML = records.map(function(record, index) {
+                var methodPred = record.method_prediction || '--';
+                var methodAct = record.method_actual || '';
+                var k1Pred = record.k1_prediction || '--';
+                var k1Act = record.k1_actual || '';
+                // 方法1 没有 Q1 值，强制显示 "--"
+                var q1Pred = (methodPred === '1' || !record.q1_prediction) ? '--' : record.q1_prediction;
+                var q1Act = record.q1_actual || '';
+
+                // 方法类别对比
+                var methodStatusHtml = '';
+                if (methodAct) {
+                    var correct = record.method_correct;
+                    methodStatusHtml = correct
+                        ? '<span class="status-badge status-correct">✅ 正确</span>'
+                        : '<span class="status-badge status-wrong">❌ 偏差</span>';
+                } else {
+                    methodStatusHtml = '<span class="status-badge status-pending">⏳ 待录入</span>';
+                }
+
+                // K1 偏差
+                var k1StatusHtml = '';
+                if (k1Act) {
+                    var dev = record.k1_deviation;
+                    var level = record.k1_level;
+                    var cls = level === 'accurate' ? 'status-correct' : (level === 'normal' ? 'status-warn' : 'status-wrong');
+                    var label = level === 'accurate' ? '✅ 精准' : (level === 'normal' ? '⚠️ 一般' : '❌ 偏差大');
+                    k1StatusHtml = '<span class="status-badge ' + cls + '">' + label + '</span>';
+                } else {
+                    k1StatusHtml = '<span class="status-badge status-pending">⏳ 待录入</span>';
+                }
+
+                // Q1 偏差
+                var q1StatusHtml = '';
+                if (q1Act) {
+                    var dev = record.q1_deviation;
+                    var level = record.q1_level;
+                    var cls = level === 'accurate' ? 'status-correct' : (level === 'normal' ? 'status-warn' : 'status-wrong');
+                    var label = level === 'accurate' ? '✅ 精准' : (level === 'normal' ? '⚠️ 一般' : '❌ 偏差大');
+                    q1StatusHtml = '<span class="status-badge ' + cls + '">' + label + '</span>';
+                } else {
+                    q1StatusHtml = '<span class="status-badge status-pending">⏳ 待录入</span>';
+                }
+
+                var checkedTime = record.checked_time ? record.checked_time.substring(0, 19) : '';
+                var checkedLabel = checkedTime ? '对比时间：' + checkedTime : '';
+
+                return '<div class="accuracy-card" style="animation-delay: ' + (index * 0.05) + 's">' +
+                    '<div class="accuracy-card__header">' +
+                        '<div class="accuracy-card__title">' +
+                            '<span class="accuracy-card__title-icon">📝</span>' +
+                            '<span class="accuracy-card__title-text" title="' + record.project_name + '">' + truncateText(record.project_name || '未命名项目', 30) + '</span>' +
+                        '</div>' +
+                        '<div class="accuracy-card__actions">' +
+                            '<button class="edit-btn-sm" onclick="openEditModal(' + record.id + ', ' + JSON.stringify(methodPred).replace(/"/g, '&quot;') + ', ' + JSON.stringify(k1Pred).replace(/"/g, '&quot;') + ', ' + JSON.stringify(q1Pred).replace(/"/g, '&quot;') + ', ' + JSON.stringify(methodAct).replace(/"/g, '&quot;') + ', ' + JSON.stringify(k1Act).replace(/"/g, '&quot;') + ', ' + JSON.stringify(q1Act).replace(/"/g, '&quot;') + ')" title="录入/修改真实值">✏️</button>' +
+                        '</div>' +
+                    '</div>' +
+                    '<div class="accuracy-card__time">🕐 ' + formatTime(record.prediction_time) + '</div>' +
+                    '<div class="accuracy-card__body">' +
+                        '<div class="acc-row">' +
+                            '<div class="acc-row__header"><span class="acc-row__label">📋 方法类别</span>' + methodStatusHtml + '</div>' +
+                            '<div class="acc-row__values">' +
+                                '<div class="acc-value"><span class="acc-value__label">预测值</span><span class="acc-value__val method-val">' + (methodPred === '1' ? '方法1' : (methodPred === '2' ? '方法2' : '--')) + '</span></div>' +
+                                '<div class="acc-arrow">→</div>' +
+                                '<div class="acc-value"><span class="acc-value__label">真实值</span><span class="acc-value__val">' + (methodAct ? (methodAct === '1' ? '方法1' : '方法2') : '<span style="color:#95a5a6">待录入</span>') + '</span></div>' +
+                            '</div>' +
+                        '</div>' +
+                        '<div class="acc-row">' +
+                            '<div class="acc-row__header"><span class="acc-row__label">📊 K1 值</span>' + k1StatusHtml + '</div>' +
+                            '<div class="acc-row__values">' +
+                                '<div class="acc-value"><span class="acc-value__label">预测值</span><span class="acc-value__val k1-val">' + k1Pred + '</span></div>' +
+                                '<div class="acc-arrow">→</div>' +
+                                '<div class="acc-value"><span class="acc-value__label">真实值</span><span class="acc-value__val">' + (k1Act || '<span style="color:#95a5a6">待录入</span>') + '</span></div>' +
+                            '</div>' +
+                        '</div>' +
+                        '<div class="acc-row">' +
+                            '<div class="acc-row__header"><span class="acc-row__label">⚙️ Q1 值</span>' + q1StatusHtml + '</div>' +
+                            '<div class="acc-row__values">' +
+                                '<div class="acc-value"><span class="acc-value__label">预测值</span><span class="acc-value__val q1-val">' + q1Pred + '</span></div>' +
+                                '<div class="acc-arrow">→</div>' +
+                                '<div class="acc-value"><span class="acc-value__label">真实值</span><span class="acc-value__val">' + (q1Act || '<span style="color:#95a5a6">待录入</span>') + '</span></div>' +
+                            '</div>' +
+                        '</div>' +
+                    '</div>' +
+                    (checkedLabel ? '<div class="accuracy-card__footer"><span class="footer-info">' + checkedLabel + '</span></div>' : '') +
+                    '</div>';
+            }).join('');
+
+            updatePagination(total, page, PAGE_SIZE);
+        }
+
+        function formatTime(t) {
+            if (!t) return '--';
+            return t.substring(0, 16).replace(' ', ' ');
+        }
+
+        function truncateText(text, max) {
+            return text.length > max ? text.substring(0, max) + '...' : text;
+        }
+
+        function updatePagination(total, currentPage, pageSize) {
+            totalPages = Math.ceil(total / pageSize);
+            var pagination = document.getElementById('pagination');
+            if (totalPages <= 1) { pagination.innerHTML = ''; return; }
+
+            var html = '<button onclick="goToPage(' + Math.max(1, currentPage - 1) + ')" ' + (currentPage <= 1 ? 'disabled' : '') + '>‹</button>';
+            var start = Math.max(1, currentPage - 2);
+            var end = Math.min(totalPages, currentPage + 2);
+            if (start > 1) { html += '<button onclick="goToPage(1)">1</button>'; if (start > 2) html += '<span class="pagination-ellipsis">…</span>'; }
+            for (var i = start; i <= end; i++) html += '<button onclick="goToPage(' + i + ')" ' + (i === currentPage ? 'class="active"' : '') + '>' + i + '</button>';
+            if (end < totalPages) { if (end < totalPages - 1) html += '<span class="pagination-ellipsis">…</span>'; html += '<button onclick="goToPage(' + totalPages + ')">' + totalPages + '</button>'; }
+            html += '<button onclick="goToPage(' + Math.min(totalPages, currentPage + 1) + ')" ' + (currentPage >= totalPages ? 'disabled' : '') + '>›</button>';
+            pagination.innerHTML = html;
+        }
+
+        function goToPage(page) {
+            if (page >= 1 && page <= totalPages) {
+                currentPage = page;
+                loadRecords(currentPage);
+                document.querySelector('.history-section').scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
+        }
+
+        function applyFilter() {
+            currentKeyword = document.getElementById('keywordInput').value.trim();
+            currentPage = 1;
+            loadRecords(currentPage);
+        }
+
+        // 录入真实值弹窗
+        function toggleQ1Field() {
+            var method = document.getElementById('editMethod').value;
+            var q1Input = document.getElementById('editQ1');
+            var q1Field = q1Input.closest('.edit-field');
+            
+            if (method === '1') {
+                // 方法1 不允许录入 Q1
+                q1Input.disabled = true;
+                q1Input.value = '';
+                q1Input.placeholder = '方法 1 无 Q1 值';
+                q1Input.style.background = '#f0f0f0';
+                q1Input.style.color = '#b0b8c4';
+                q1Input.style.cursor = 'not-allowed';
+                q1Field.querySelector('.edit-label').style.color = '#b0b8c4';
+            } else {
+                q1Input.disabled = false;
+                q1Input.placeholder = '如 0.80';
+                q1Input.style.background = '';
+                q1Input.style.color = '';
+                q1Input.style.cursor = '';
+                q1Field.querySelector('.edit-label').style.color = '';
+            }
+        }
+
+        function openEditModal(id, methodPred, k1Pred, q1Pred, methodAct, k1Act, q1Act) {
+            currentEditId = id;
+            document.getElementById('editMethod').value = methodAct || '';
+            document.getElementById('editK1').value = k1Act || '';
+            document.getElementById('editQ1').value = q1Act || '';
+            document.getElementById('editModal').style.display = 'flex';
+            // 根据已选方法类别切换 Q1 输入框状态
+            toggleQ1Field();
+        }
+
+        function closeEditModal() {
+            document.getElementById('editModal').style.display = 'none';
+            currentEditId = null;
+        }
+
+        function saveActual() {
+            var method = document.getElementById('editMethod').value;
+            var data = {
+                id: currentEditId,
+                method_actual: method || null,
+                k1_actual: document.getElementById('editK1').value || null,
+                // 方法1 不允许录入 Q1
+                q1_actual: (method === '1') ? null : (document.getElementById('editQ1').value || null)
+            };
+
+            fetch('/api/accuracy/update', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify(data)
+            })
+            .then(function(r) { return r.json(); })
+            .then(function(result) {
+                if (result.success) {
+                    closeEditModal();
+                    loadRecords(currentPage);
+                    loadStats();
+                } else {
+                    alert('保存失败: ' + (result.error || '未知错误'));
+                }
+            });
+        }
+    </script>
+{% endblock %}

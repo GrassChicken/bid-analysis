@@ -1,0 +1,373 @@
+{% extends "base.html" %}
+
+{% block title %}🧠 智能诊断引擎 - 工程开标数据智能分析平台 V6.0{% endblock %}
+
+{% block page_title %}🧠 智能诊断引擎{% endblock %}
+
+{% block header_actions %}
+    <button class="btn btn-dashboard" onclick="window.location.href='/dashboard'">🏠 返回仪表盘</button>
+    <button class="btn btn-predict" onclick="window.location.href='/predict'">🎯 智能预测</button>
+    <button class="btn btn-history" onclick="window.location.href='/accuracy'">📈 准确率分析</button>
+{% endblock %}
+
+{% block extra_head %}
+    <link rel="stylesheet" href="/static/css/diagnosis.css">
+{% endblock %}
+
+{% block content %}
+<!-- 页面头部横幅 -->
+<div class="hero-banner">
+    <div class="hero-icon">🧠</div>
+    <div class="hero-text">
+        <h2>智能诊断引擎</h2>
+        <p>不只是预测工具，更是预测教练</p>
+    </div>
+</div>
+
+<!-- 诊断概览 -->
+<div class="overview-grid">
+    <div class="overview-card" onclick="loadAnomalyDiagnosis()">
+        <div class="overview-card__icon">🔍</div>
+        <div class="overview-card__title">预测异常检测</div>
+        <div class="overview-card__desc">自动识别预测结果中的异常值，给出风险提示</div>
+    </div>
+    <div class="overview-card" onclick="loadAlgorithmPerformance()">
+        <div class="overview-card__icon">📊</div>
+        <div class="overview-card__title">算法表现评估</div>
+        <div class="overview-card__desc">评估 20 种统计算法的实际准确率，找出最优算法</div>
+    </div>
+    <div class="overview-card" onclick="loadConfidenceCalibration()">
+        <div class="overview-card__icon">🎯</div>
+        <div class="overview-card__title">置信度校准</div>
+        <div class="overview-card__desc">对比标称置信度 vs 实际准确率，检验系统可信度</div>
+    </div>
+</div>
+
+<!-- 异常检测区域 -->
+<div class="diagnosis-panel hidden" id="anomalyPanel">
+    <div class="panel-header">
+        <div class="panel-header__icon">🔍</div>
+        <div>
+            <h3>预测异常检测</h3>
+            <p class="panel-header__desc">选择一条历史预测记录，系统自动诊断其结果是否存在异常</p>
+        </div>
+    </div>
+    
+    <div class="panel-body">
+        <div class="anomaly-selector">
+            <select id="anomalyRecordSelect" class="diagnosis-select" onchange="runAnomalyDiagnosis()">
+                <option value="">-- 选择预测记录 --</option>
+            </select>
+            <button class="diagnosis-btn diagnosis-btn--primary" onclick="runAnomalyDiagnosis()">🔍 开始诊断</button>
+        </div>
+        
+        <div id="anomalyResult" class="hidden"></div>
+    </div>
+</div>
+
+<!-- 算法表现评估区域 -->
+<div class="diagnosis-panel hidden" id="performancePanel">
+    <div class="panel-header">
+        <div class="panel-header__icon">📊</div>
+        <div>
+            <h3>算法表现评估</h3>
+            <p class="panel-header__desc">基于已有真实值的预测记录，评估各算法的实际表现</p>
+        </div>
+    </div>
+    
+    <div class="panel-body">
+        <div id="performanceResult"></div>
+    </div>
+</div>
+
+<!-- 置信度校准区域 -->
+<div class="diagnosis-panel hidden" id="calibrationPanel">
+    <div class="panel-header">
+        <div class="panel-header__icon">🎯</div>
+        <div>
+            <h3>置信度校准</h3>
+            <p class="panel-header__desc">对比标称置信度与实际准确率，检验系统的"自信心"是否合理</p>
+        </div>
+    </div>
+    
+    <div class="panel-body">
+        <div id="calibrationResult"></div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+    <script>
+        // ============================================================
+        // 异常检测
+        // ============================================================
+        
+        // 加载预测记录列表
+        function loadAnomalyDiagnosis() {
+            document.getElementById('anomalyPanel').classList.remove('hidden');
+            document.getElementById('anomalyPanel').scrollIntoView({ behavior: 'smooth', block: 'start' });
+            
+            // 获取最近 20 条预测记录
+            fetch('/api/prediction/history?page=1&page_size=20')
+                .then(function(r) { return r.json(); })
+                .then(function(data) {
+                    if (data.success) {
+                        var select = document.getElementById('anomalyRecordSelect');
+                        select.innerHTML = '<option value="">-- 选择预测记录 --</option>';
+                        data.history.forEach(function(record) {
+                            var opt = document.createElement('option');
+                            opt.value = record.id;
+                            opt.text = record.project_name + ' (' + record.prediction_time + ')';
+                            opt.dataset.k1Pred = record.k1_prediction || '';
+                            opt.dataset.q1Pred = record.q1_prediction || '';
+                            opt.dataset.methodPred = record.method_prediction || '';
+                            opt.dataset.location = record.location_filter || '';
+                            opt.dataset.methodCategory = record.method_filter || '';
+                            select.appendChild(opt);
+                        });
+                    }
+                });
+        }
+        
+        // 运行异常诊断
+        function runAnomalyDiagnosis() {
+            var select = document.getElementById('anomalyRecordSelect');
+            var opt = select.options[select.selectedIndex];
+            if (!opt.value) return;
+            
+            var resultDiv = document.getElementById('anomalyResult');
+            resultDiv.innerHTML = '<div class="loading-spinner">🧠 诊断中...</div>';
+            resultDiv.classList.remove('hidden');
+            
+            fetch('/api/diagnosis/anomaly', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({
+                    k1_pred: opt.dataset.k1Pred ? parseFloat(opt.dataset.k1Pred) : null,
+                    q1_pred: opt.dataset.q1Pred ? parseFloat(opt.dataset.q1Pred) : null,
+                    method_pred: opt.dataset.methodPred || null,
+                    location: opt.dataset.location || null,
+                    method_category: opt.dataset.methodCategory || null,
+                })
+            })
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                if (data.success) {
+                    renderAnomalyResult(data);
+                }
+            });
+        }
+        
+        function renderAnomalyResult(data) {
+            var html = '';
+            
+            // 诊断摘要
+            html += '<div class="diagnosis-summary">';
+            html += '<div class="diagnosis-summary__icon">' + (data.has_warnings ? '⚠️' : '✅') + '</div>';
+            html += '<div class="diagnosis-summary__text">' + data.diagnosis_summary + '</div>';
+            html += '<div class="diagnosis-summary__meta">数据量: ' + data.data_count + ' 条</div>';
+            html += '</div>';
+            
+            // 警告列表
+            if (data.warnings && data.warnings.length > 0) {
+                data.warnings.forEach(function(w) {
+                    html += '<div class="warning-card warning-' + w.level + '">';
+                    html += '<div class="warning-card__title">' + w.title + '</div>';
+                    html += '<div class="warning-card__message">' + w.message + '</div>';
+                    html += '<div class="warning-card__suggestion">💡 ' + w.suggestion + '</div>';
+                    html += '</div>';
+                });
+            } else {
+                html += '<div class="warning-card warning-success">';
+                html += '<div class="warning-card__title">✅ 预测结果正常</div>';
+                html += '<div class="warning-card__message">未发现明显异常，预测结果可参考</div>';
+                html += '</div>';
+            }
+            
+            document.getElementById('anomalyResult').innerHTML = html;
+        }
+        
+        // ============================================================
+        // 算法表现评估
+        // ============================================================
+        
+        function loadAlgorithmPerformance() {
+            var panel = document.getElementById('performancePanel');
+            panel.classList.remove('hidden');
+            panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            
+            document.getElementById('performanceResult').innerHTML = '<div class="loading-spinner">📊 评估中...</div>';
+            
+            fetch('/api/diagnosis/performance')
+                .then(function(r) { return r.json(); })
+                .then(function(data) {
+                    if (data.success) {
+                        renderPerformanceResult(data);
+                    }
+                });
+        }
+        
+        function renderPerformanceResult(data) {
+            var html = '';
+            
+            if (!data.has_data) {
+                html += '<div class="empty-state">';
+                html += '<div class="empty-state__icon">📊</div>';
+                html += '<h3>' + data.message + '</h3>';
+                html += '<p>请先在"预测准确率分析"页面录入真实值</p>';
+                html += '</div>';
+                document.getElementById('performanceResult').innerHTML = html;
+                return;
+            }
+            
+            // 总体准确率
+            html += '<div class="performance-overview">';
+            html += '<div class="perf-stat">';
+            html += '<div class="perf-stat__label">总对比记录</div>';
+            html += '<div class="perf-stat__value">' + data.total_records + ' 条</div>';
+            html += '</div>';
+            html += '<div class="perf-stat perf-stat--k1">';
+            html += '<div class="perf-stat__label">K1 整体准确率</div>';
+            html += '<div class="perf-stat__value">' + data.overall_k1_accuracy + '%</div>';
+            html += '<div class="perf-stat__sub">' + data.k1_accurate + '/' + data.k1_total + ' 精准</div>';
+            html += '</div>';
+            html += '<div class="perf-stat perf-stat--q1">';
+            html += '<div class="perf-stat__label">Q1 整体准确率</div>';
+            html += '<div class="perf-stat__value">' + data.overall_q1_accuracy + '%</div>';
+            html += '<div class="perf-stat__sub">' + data.q1_accurate + '/' + data.q1_total + ' 精准</div>';
+            html += '</div>';
+            html += '</div>';
+            
+            // K1 算法排名
+            if (data.k1_methods && data.k1_methods.length > 0) {
+                html += '<h4 class="method-section-title">📊 K1 值算法表现排名</h4>';
+                html += '<div class="method-table">';
+                html += '<div class="method-table__header">';
+                html += '<span>排名</span><span>算法名称</span><span>使用次数</span><span>精准率</span><span>平均偏差</span>';
+                html += '</div>';
+                data.k1_methods.forEach(function(m, i) {
+                    var rankClass = i === 0 ? 'rank-1' : (i === 1 ? 'rank-2' : (i === 2 ? 'rank-3' : ''));
+                    html += '<div class="method-table__row ' + rankClass + '">';
+                    html += '<span class="rank-badge ' + rankClass + '">#' + (i+1) + '</span>';
+                    html += '<span class="method-name">' + m.name + '</span>';
+                    html += '<span class="method-count">' + m.total + ' 次</span>';
+                    html += '<span class="method-accuracy">' + (m.accuracy || 0) + '%</span>';
+                    html += '<span class="method-deviation">' + (m.avg_deviation || 0) + '</span>';
+                    html += '</div>';
+                });
+                html += '</div>';
+            }
+            
+            // Q1 算法排名
+            if (data.q1_methods && data.q1_methods.length > 0) {
+                html += '<h4 class="method-section-title">⚙️ Q1 值算法表现排名</h4>';
+                html += '<div class="method-table">';
+                html += '<div class="method-table__header">';
+                html += '<span>排名</span><span>算法名称</span><span>使用次数</span><span>精准率</span><span>平均偏差</span>';
+                html += '</div>';
+                data.q1_methods.forEach(function(m, i) {
+                    var rankClass = i === 0 ? 'rank-1' : (i === 1 ? 'rank-2' : (i === 2 ? 'rank-3' : ''));
+                    html += '<div class="method-table__row ' + rankClass + '">';
+                    html += '<span class="rank-badge ' + rankClass + '">#' + (i+1) + '</span>';
+                    html += '<span class="method-name">' + m.name + '</span>';
+                    html += '<span class="method-count">' + m.total + ' 次</span>';
+                    html += '<span class="method-accuracy">' + (m.accuracy || 0) + '%</span>';
+                    html += '<span class="method-deviation">' + (m.avg_deviation || 0) + '</span>';
+                    html += '</div>';
+                });
+                html += '</div>';
+            }
+            
+            document.getElementById('performanceResult').innerHTML = html;
+        }
+        
+        // ============================================================
+        // 置信度校准
+        // ============================================================
+        
+        function loadConfidenceCalibration() {
+            var panel = document.getElementById('calibrationPanel');
+            panel.classList.remove('hidden');
+            panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            
+            document.getElementById('calibrationResult').innerHTML = '<div class="loading-spinner">🎯 校准中...</div>';
+            
+            fetch('/api/diagnosis/calibration')
+                .then(function(r) { return r.json(); })
+                .then(function(data) {
+                    if (data.success) {
+                        renderCalibrationResult(data);
+                    }
+                });
+        }
+        
+        function renderCalibrationResult(data) {
+            var html = '';
+            
+            if (!data.has_data) {
+                html += '<div class="empty-state">';
+                html += '<div class="empty-state__icon">🎯</div>';
+                html += '<h3>' + data.message + '</h3>';
+                html += '</div>';
+                document.getElementById('calibrationResult').innerHTML = html;
+                return;
+            }
+            
+            // 校准摘要
+            html += '<div class="calibration-summary">';
+            html += '<div class="calibration-summary__icon">📋</div>';
+            html += '<div class="calibration-summary__text">' + data.calibration_summary + '</div>';
+            html += '<div class="calibration-summary__meta">已对比记录: ' + data.total_records + ' 条</div>';
+            html += '</div>';
+            
+            // 置信度区间表格
+            html += '<div class="calibration-table">';
+            html += '<div class="calibration-table__header">';
+            html += '<span>置信度区间</span><span>记录数</span><span>实际准确率</span><span>校准状态</span>';
+            html += '</div>';
+            
+            data.confidence_buckets.forEach(function(bucket) {
+                if (bucket.count === 0) return;
+                
+                var statusHtml = '';
+                if (bucket.actual_accuracy === null) {
+                    statusHtml = '<span class="cal-status cal-status--unknown">无数据</span>';
+                } else {
+                    var avgConf = (bucket.min + bucket.max) / 2 * 100;
+                    var diff = bucket.actual_accuracy - avgConf;
+                    if (diff < -15) {
+                        statusHtml = '<span class="cal-status cal-status--over">🔴 过估</span>';
+                    } else if (diff > 15) {
+                        statusHtml = '<span class="cal-status cal-status--under">🟡 低估</span>';
+                    } else {
+                        statusHtml = '<span class="cal-status cal-status--ok">✅ 正常</span>';
+                    }
+                }
+                
+                html += '<div class="calibration-table__row">';
+                html += '<span>' + bucket.range + '</span>';
+                html += '<span>' + bucket.count + ' 条</span>';
+                html += '<span>' + (bucket.actual_accuracy !== null ? bucket.actual_accuracy + '%' : '—') + '</span>';
+                html += '<span>' + statusHtml + '</span>';
+                html += '</div>';
+            });
+            html += '</div>';
+            
+            // 过估/低估提醒
+            if (data.overconfident_ranges && data.overconfident_ranges.length > 0) {
+                html += '<div class="calibration-tip calibration-tip--warn">';
+                html += '⚠️ 系统可能在以下区间过于自信：' + data.overconfident_ranges.join('、');
+                html += '（标称置信度高于实际准确率）';
+                html += '</div>';
+            }
+            if (data.underconfident_ranges && data.underconfident_ranges.length > 0) {
+                html += '<div class="calibration-tip calibration-tip--info">';
+                html += '💡 系统在以下区间可能过于保守：' + data.underconfident_ranges.join('、');
+                html += '（实际准确率高于标称置信度）';
+                html += '</div>';
+            }
+            
+            document.getElementById('calibrationResult').innerHTML = html;
+        }
+    </script>
+{% endblock %}

@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>登录 - 工程开标数据智能分析平台 V6.0</title>
+    <link rel="manifest" href="/static/manifest.json">
+    <meta name="theme-color" content="#667eea">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="开标数据 V6">
+    <link rel="apple-touch-icon" href="/static/icons/icon-192.png">
+    <link rel="stylesheet" href="/static/css/auth.css">
+</head>
+<body>
+    <div class="login-container">
+        <div class="logo">
+            <h1>🏗️ 工程开标数据智能分析平台</h1>
+            <span class="version">V6.0</span>
+        </div>
+
+        <div class="error-message" id="errorMessage"></div>
+
+        <form id="loginForm" onsubmit="handleLogin(event)" autocomplete="on">
+            <div class="form-group">
+                <label for="username">用户名</label>
+                <input type="text" id="username" name="username" required placeholder="请输入用户名" autocomplete="username">
+            </div>
+            <div class="form-group">
+                <label for="password">密码</label>
+                <input type="password" id="password" name="password" required placeholder="请输入密码" autocomplete="current-password">
+            </div>
+            <button type="submit" class="btn btn-primary" id="loginBtn">登录</button>
+        </form>
+
+        <div class="divider">或</div>
+
+        <div class="register-link">
+            还没有账号?<a href="/register">立即注册</a>
+        </div>
+    </div>
+
+    <script src="/static/js/pages/auth.js"></script>
+</body>
+</html>

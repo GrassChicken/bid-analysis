@@ -1,0 +1,621 @@
+{% extends "base.html" %}
+
+{% block title %}📋 预测历史 - 工程开标数据智能分析平台 V6.0{% endblock %}
+
+{% block page_title %}📋 预测历史记录{% endblock %}
+
+{% block header_actions %}
+    <button class="btn btn-history" onclick="window.location.href='/dashboard'">🏠 返回仪表盘</button>
+    <button class="btn btn-predict" onclick="window.location.href='/predict'">🎯 智能预测</button>
+    <button class="btn btn-accuracy" onclick="window.location.href='/accuracy'">📈 准确率分析</button>
+{% endblock %}
+
+{% block extra_head %}
+    <link rel="stylesheet" href="/static/css/history.css">
+{% endblock %}
+
+{% block content %}
+<!-- 页面头部横幅 -->
+<div class="hero-banner">
+    <div class="hero-icon">📋</div>
+    <div class="hero-text">
+        <h2>预测历史</h2>
+        <p>查看和管理所有历史预测记录</p>
+    </div>
+</div>
+
+<!-- 搜索筛选面板 -->
+<div class="filter-panel">
+    <div class="filter-header">
+        <div class="filter-header__icon">🔍</div>
+        <div>
+            <h3>搜索与筛选</h3>
+            <p class="filter-header__desc">按项目名称模糊搜索，按时间范围筛选</p>
+        </div>
+    </div>
+    
+    <div class="filter-form">
+        <!-- 关键字搜索 -->
+        <div class="filter-group filter-group--full">
+            <label for="searchKeyword" class="filter-label">
+                <span class="filter-label__icon">🔎</span>
+                <span>关键字搜索</span>
+            </label>
+            <div class="search-input-wrapper">
+                <input type="text" id="searchKeyword" class="filter-input" placeholder="输入项目名称、预测值等进行模糊搜索" oninput="debounceSearch()">
+                <button class="search-clear-btn" onclick="clearSearch()" id="searchClearBtn" style="display:none;">✕</button>
+            </div>
+        </div>
+        
+        <!-- 日期范围 -->
+        <div class="filter-row">
+            <div class="filter-group">
+                <label for="dateFrom" class="filter-label">
+                    <span class="filter-label__icon">📅</span>
+                    <span>开始日期</span>
+                </label>
+                <input type="date" id="dateFrom" class="filter-input filter-input--date" onchange="applyFilters()">
+            </div>
+            <div class="filter-group">
+                <label for="dateTo" class="filter-label">
+                    <span class="filter-label__icon">📅</span>
+                    <span>结束日期</span>
+                </label>
+                <input type="date" id="dateTo" class="filter-input filter-input--date" onchange="applyFilters()">
+            </div>
+        </div>
+        
+        <!-- 操作按钮 -->
+        <div class="filter-actions">
+            <button class="filter-btn filter-btn--primary" onclick="applyFilters()">🔍 搜索</button>
+            <button class="filter-btn filter-btn--secondary" onclick="resetFilters()">🔄 重置</button>
+            <button class="filter-btn filter-btn--danger" onclick="showClearConfirm()">🗑️ 清空历史</button>
+        </div>
+    </div>
+    
+    <!-- 搜索结果统计 -->
+    <div class="filter-stats" id="filterStats" style="display:none;">
+        <span class="filter-stats__icon">📊</span>
+        共找到 <strong id="resultCount">0</strong> 条记录
+    </div>
+</div>
+
+<!-- 历史记录卡片列表 -->
+<div class="history-section">
+    <div class="history-section__header">
+        <div class="history-section__title">📊 预测记录</div>
+        <div class="history-section__count" id="totalCount"></div>
+    </div>
+    
+    <div id="historyContent">
+        <div class="cards-grid" id="cardsGrid"></div>
+        
+        <!-- 空状态 -->
+        <div class="empty-state hidden" id="emptyState">
+            <div class="empty-state__icon">📚</div>
+            <h3 class="empty-state__title">暂无预测历史</h3>
+            <p class="empty-state__desc">还没有任何预测记录，开始进行预测吧！</p>
+            <button class="empty-state__btn" onclick="window.location.href='/predict'">🎯 去预测</button>
+        </div>
+        
+        <!-- 无结果状态 -->
+        <div class="empty-state hidden" id="noResultsState">
+            <div class="empty-state__icon">🔍</div>
+            <h3 class="empty-state__title">没有找到匹配的记录</h3>
+            <p class="empty-state__desc">请尝试调整搜索条件或重置筛选</p>
+            <button class="empty-state__btn" onclick="resetFilters()">🔄 重置筛选</button>
+        </div>
+    </div>
+    
+<!-- 确认弹窗 -->
+<div id="historyConfirmModal" class="confirm-overlay" style="display:none;" onclick="if(event.target===this)closeConfirmModal(false)">
+    <div class="confirm-box">
+        <div class="confirm-box__header">
+            <span class="confirm-box__icon">⚠️</span>
+            <h3 class="confirm-box__title" id="confirmTitle">确认操作</h3>
+        </div>
+        <div class="confirm-box__body" id="confirmMessage"></div>
+        <div class="confirm-box__footer">
+            <button class="confirm-btn confirm-btn--cancel" onclick="closeConfirmModal(false)">取消</button>
+            <button class="confirm-btn confirm-btn--confirm" onclick="confirmAction()">确定</button>
+        </div>
+    </div>
+</div>
+
+<!-- 密码验证弹窗 -->
+<div id="passwordVerifyModal" class="confirm-overlay" style="display:none;" onclick="if(event.target===this)hidePasswordModal()">
+    <div class="confirm-box">
+        <div class="confirm-box__header">
+            <span class="confirm-box__icon">🔒</span>
+            <h3 class="confirm-box__title">安全验证</h3>
+        </div>
+        <div class="confirm-box__body">
+            <p style="margin-bottom:12px;color:#666;">清空历史是高风险操作，请输入您的登录密码以确认身份。</p>
+            <div class="password-input-group">
+                <input type="password" id="clearPasswordInput" class="filter-input" placeholder="请输入当前登录密码" onkeydown="if(event.key==='Enter')verifyPassword()">
+            </div>
+            <div id="passwordError" style="color:#e74c3c;font-size:0.9em;margin-top:8px;display:none;"></div>
+        </div>
+        <div class="confirm-box__footer">
+            <button class="confirm-btn confirm-btn--cancel" onclick="hidePasswordModal()">取消</button>
+            <button class="confirm-btn confirm-btn--confirm" onclick="verifyPassword()" id="verifyPasswordBtn">🔓 验证并清空</button>
+        </div>
+    </div>
+</div>
+
+<!-- 导出菜单 -->
+<div id="exportMenu" class="export-menu-overlay" style="display:none;" onclick="if(event.target===this)closeExportMenu()">
+    <div class="export-menu">
+        <div class="export-menu__title">📤 导出预测报告</div>
+        <button class="export-menu__item" onclick="exportRecord('excel')">
+            <span class="export-menu__icon">📊</span>
+            <span class="export-menu__label">Excel 表格</span>
+            <span class="export-menu__desc">格式精美</span>
+        </button>
+        <button class="export-menu__item" onclick="exportRecord('pdf')">
+            <span class="export-menu__icon">📄</span>
+            <span class="export-menu__label">PDF 报告</span>
+            <span class="export-menu__desc">适合打印</span>
+        </button>
+    </div>
+</div>
+
+<!-- 分页 -->
+    <div class="pagination" id="pagination"></div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+    <script>
+        let currentPage = 1;
+        let totalPages = 1;
+        let currentAction = null;
+        let searchTimer = null;
+        let currentKeyword = '';
+        let currentDateFrom = '';
+        let currentDateTo = '';
+
+        // 页面加载
+        document.addEventListener('DOMContentLoaded', function() {
+            loadHistory(currentPage);
+        });
+
+        // 防抖搜索
+        function debounceSearch() {
+            const keyword = document.getElementById('searchKeyword').value.trim();
+            const clearBtn = document.getElementById('searchClearBtn');
+            clearBtn.style.display = keyword ? 'flex' : 'none';
+            
+            clearTimeout(searchTimer);
+            searchTimer = setTimeout(function() {
+                currentKeyword = keyword;
+                currentPage = 1;
+                loadHistory(currentPage);
+            }, 400);
+        }
+
+        // 清空搜索
+        function clearSearch() {
+            document.getElementById('searchKeyword').value = '';
+            document.getElementById('searchClearBtn').style.display = 'none';
+            currentKeyword = '';
+            currentPage = 1;
+            loadHistory(currentPage);
+        }
+
+        // 应用筛选
+        function applyFilters() {
+            currentKeyword = document.getElementById('searchKeyword').value.trim();
+            currentDateFrom = document.getElementById('dateFrom').value;
+            currentDateTo = document.getElementById('dateTo').value;
+            currentPage = 1;
+            loadHistory(currentPage);
+        }
+
+        // 重置筛选
+        function resetFilters() {
+            document.getElementById('searchKeyword').value = '';
+            document.getElementById('searchClearBtn').style.display = 'none';
+            document.getElementById('dateFrom').value = '';
+            document.getElementById('dateTo').value = '';
+            document.getElementById('filterStats').style.display = 'none';
+            currentKeyword = '';
+            currentDateFrom = '';
+            currentDateTo = '';
+            currentPage = 1;
+            loadHistory(currentPage);
+        }
+
+        // 加载历史记录
+        function loadHistory(page = 1) {
+            let url = `/api/prediction/history?page=${page}&page_size=20`;
+            if (currentKeyword) url += `&keyword=${encodeURIComponent(currentKeyword)}`;
+            if (currentDateFrom) url += `&date_from=${currentDateFrom}`;
+            if (currentDateTo) url += `&date_to=${currentDateTo}`;
+            
+            fetch(url)
+                .then(function(response) { return response.json(); })
+                .then(function(data) {
+                    if (data.success) {
+                        displayHistory(data.history, data.total, page);
+                    } else {
+                        console.error('API 返回错误:', data.error);
+                    }
+                })
+                .catch(function(error) {
+                    console.error('加载历史记录失败:', error);
+                });
+        }
+
+        // 显示历史记录
+        function displayHistory(records, total, page) {
+            const cardsGrid = document.getElementById('cardsGrid');
+            const emptyState = document.getElementById('emptyState');
+            const noResultsState = document.getElementById('noResultsState');
+            const filterStats = document.getElementById('filterStats');
+            const resultCount = document.getElementById('resultCount');
+            const totalCount = document.getElementById('totalCount');
+            
+            totalCount.textContent = `共 ${total} 条`;
+            
+            if (records.length === 0 && total === 0) {
+                // 没有任何数据
+                cardsGrid.innerHTML = '';
+                emptyState.classList.remove('hidden');
+                noResultsState.classList.add('hidden');
+                filterStats.style.display = 'none';
+                return;
+            }
+            
+            if (records.length === 0 && total > 0) {
+                // 当前页无数据但总数有（可能是最后一页删除后）
+                cardsGrid.innerHTML = '';
+                noResultsState.classList.remove('hidden');
+                emptyState.classList.add('hidden');
+                filterStats.style.display = 'none';
+                updatePagination(0, page, 20);
+                return;
+            }
+            
+            emptyState.classList.add('hidden');
+            noResultsState.classList.add('hidden');
+            
+            // 显示搜索结果统计
+            if (currentKeyword || currentDateFrom || currentDateTo) {
+                filterStats.style.display = 'flex';
+                resultCount.textContent = total;
+            } else {
+                filterStats.style.display = 'none';
+            }
+            
+            cardsGrid.innerHTML = records.map(function(record, index) {
+                const methodPrediction = record.method_prediction || '--';
+                const methodConfTag = getConfidenceBadge(record.method_confidence);
+                const k1Tag = record.k1_prediction ? record.k1_prediction : '--';
+                const k1ConfTag = getConfidenceBadge(record.k1_confidence);
+                const q1Tag = (methodPrediction !== '1' && record.q1_prediction) ? record.q1_prediction : '--';
+                const q1ConfTag = (methodPrediction !== '1') ? getConfidenceBadge(record.q1_confidence) : '<span class="conf-badge conf-none">不适用</span>';
+                const aiTag = record.used_ai ? '<span class="type-badge type-ai">🤖 AI</span>' : '<span class="type-badge type-stat">📊 统计</span>';
+                const predictTime = record.prediction_time ? formatDateTime(record.prediction_time) : '--';
+                
+                const locationTag = record.location_filter ? `<span class="loc-badge">📍 ${record.location_filter}</span>` : '';
+                
+                return `
+                    <div class="history-card" style="animation-delay: ${index * 0.05}s">
+                        <div class="history-card__header">
+                            <div class="history-card__title">
+                                <span class="history-card__title-icon">📝</span>
+                                <span class="history-card__title-text" title="${record.project_name || ''}">${truncateText(record.project_name || '未命名项目', 25)}</span>
+                            </div>
+                            <div class="history-card__actions">
+                                ${locationTag}
+                                ${aiTag}
+                                <button class="card-export-btn" onclick="showExportMenu(${record.id})" title="导出">📤</button>
+                                <button class="card-delete-btn" onclick="deleteHistoryRecord(${record.id})" title="删除">🗑️</button>
+                            </div>
+                        </div>
+                        <div class="history-card__time">
+                            <span class="time-icon">🕐</span>
+                            ${predictTime}
+                        </div>
+                        <div class="history-card__body">
+                            <div class="pred-item">
+                                <span class="pred-item__label">方法类别</span>
+                                <div class="pred-item__value-row">
+                                    <span class="pred-item__value method-value">${methodPrediction}</span>
+                                    ${methodConfTag}
+                                </div>
+                            </div>
+                            <div class="pred-item">
+                                <span class="pred-item__label">K1 值</span>
+                                <div class="pred-item__value-row">
+                                    <span class="pred-item__value k1-value">${k1Tag}</span>
+                                    ${k1ConfTag}
+                                </div>
+                            </div>
+                            <div class="pred-item">
+                                <span class="pred-item__label">Q1 值</span>
+                                <div class="pred-item__value-row">
+                                    <span class="pred-item__value q1-value">${q1Tag}</span>
+                                    ${q1ConfTag}
+                                </div>
+                            </div>
+                        </div>
+                        <div class="history-card__footer">
+                            <span class="footer-stat">
+                                <span class="footer-stat__icon">📊</span>
+                                数据量: <strong>${record.data_count || 0}</strong>
+                            </span>
+                            <span class="footer-stat">
+                                <span class="footer-stat__icon">📅</span>
+                                <strong>${formatDateRange(record.date_from, record.date_to)}</strong>
+                            </span>
+                            <span class="footer-stat">
+                                <span class="footer-stat__icon">🔢</span>
+                                序号: <strong>${(page - 1) * 20 + index + 1}</strong>
+                            </span>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+            
+            updatePagination(total, page, 20);
+        }
+
+        // 格式化时间
+        function formatDateTime(timeStr) {
+            if (!timeStr) return '--';
+            const d = new Date(timeStr.replace(' ', 'T'));
+            const y = d.getFullYear();
+            const m = String(d.getMonth() + 1).padStart(2, '0');
+            const day = String(d.getDate()).padStart(2, '0');
+            const h = String(d.getHours()).padStart(2, '0');
+            const min = String(d.getMinutes()).padStart(2, '0');
+            return `${y}-${m}-${day} ${h}:${min}`;
+        }
+
+        // 格式化日期范围
+        function formatDateRange(dateFrom, dateTo) {
+            if (!dateFrom || !dateTo) return '—';
+            return `${dateFrom} ~ ${dateTo}`;
+        }
+
+        // 获取置信度标签
+        function getConfidenceBadge(confidence) {
+            if (confidence === null || confidence === undefined) {
+                return '<span class="conf-badge conf-none">--</span>';
+            }
+            const percent = Math.round(confidence * 100);
+            let cls = 'conf-low';
+            if (confidence >= 0.8) cls = 'conf-high';
+            else if (confidence >= 0.6) cls = 'conf-medium';
+            return `<span class="conf-badge ${cls}">${percent}%</span>`;
+        }
+
+        // 截断文本
+        function truncateText(text, maxLength) {
+            if (!text) return '';
+            return text.length > maxLength ? text.substring(0, maxLength) + '...' : text;
+        }
+
+        // 更新分页
+        function updatePagination(total, currentPage, pageSize) {
+            totalPages = Math.ceil(total / pageSize);
+            const pagination = document.getElementById('pagination');
+            
+            if (totalPages <= 1) {
+                pagination.innerHTML = '';
+                return;
+            }
+            
+            let buttons = '';
+            buttons += `<button onclick="goToPage(${Math.max(1, currentPage - 1)})" ${currentPage <= 1 ? 'disabled' : ''}>‹</button>`;
+            
+            const startPage = Math.max(1, currentPage - 2);
+            const endPage = Math.min(totalPages, currentPage + 2);
+            
+            if (startPage > 1) {
+                buttons += `<button onclick="goToPage(1)">1</button>`;
+                if (startPage > 2) buttons += '<span class="pagination-ellipsis">…</span>';
+            }
+            
+            for (let i = startPage; i <= endPage; i++) {
+                buttons += `<button onclick="goToPage(${i})" ${i === currentPage ? 'class="active"' : ''}>${i}</button>`;
+            }
+            
+            if (endPage < totalPages) {
+                if (endPage < totalPages - 1) buttons += '<span class="pagination-ellipsis">…</span>';
+                buttons += `<button onclick="goToPage(${totalPages})">${totalPages}</button>`;
+            }
+            
+            buttons += `<button onclick="goToPage(${Math.min(totalPages, currentPage + 1)})" ${currentPage >= totalPages ? 'disabled' : ''}>›</button>`;
+            
+            pagination.innerHTML = buttons;
+        }
+
+        // 跳转到指定页面
+        function goToPage(page) {
+            if (page >= 1 && page <= totalPages) {
+                currentPage = page;
+                loadHistory(currentPage);
+                document.querySelector('.history-section').scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
+        }
+
+        // 删除历史记录
+        function deleteHistoryRecord(recordId) {
+            currentAction = {
+                type: 'delete_single',
+                recordId: recordId
+            };
+            
+            document.getElementById('confirmTitle').textContent = '确认删除';
+            document.getElementById('confirmMessage').innerHTML = '确定要删除这条预测记录吗？此操作不可恢复。';
+            document.getElementById('historyConfirmModal').style.display = 'flex';
+        }
+
+        // 显示清空历史确认
+        function showClearConfirm() {
+            currentAction = { type: 'clear_all' };
+            document.getElementById('confirmTitle').textContent = '清空历史记录';
+            document.getElementById('confirmMessage').innerHTML = '⚠️ 警告：确定要清空全部预测历史吗？此操作不可恢复！';
+            document.getElementById('historyConfirmModal').style.display = 'flex';
+        }
+
+        // 关闭确认模态框
+        function closeConfirmModal(confirmed) {
+            document.getElementById('historyConfirmModal').style.display = 'none';
+            if (confirmed && currentAction) {
+                executeAction(currentAction);
+            }
+            currentAction = null;
+        }
+
+        // 确认操作
+        function confirmAction() {
+            closeConfirmModal(true);
+        }
+
+        // 隐藏密码验证弹窗
+        function hidePasswordModal() {
+            document.getElementById('passwordVerifyModal').style.display = 'none';
+            document.getElementById('clearPasswordInput').value = '';
+            document.getElementById('passwordError').style.display = 'none';
+        }
+
+        // 验证密码并执行清空
+        function verifyPassword() {
+            const password = document.getElementById('clearPasswordInput').value;
+            const errorDiv = document.getElementById('passwordError');
+            const btn = document.getElementById('verifyPasswordBtn');
+
+            if (!password) {
+                errorDiv.textContent = '请输入密码';
+                errorDiv.style.display = 'block';
+                return;
+            }
+
+            btn.disabled = true;
+            btn.textContent = '验证中...';
+
+            fetch('/api/auth/verify-password', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({password: password})
+            })
+            .then(function(response) { return response.json(); })
+            .then(function(data) {
+                if (data.success) {
+                    // 密码正确，执行清空
+                    hidePasswordModal();
+                    executeClearAll();
+                } else {
+                    errorDiv.textContent = data.error || '密码错误，请重试';
+                    errorDiv.style.display = 'block';
+                    document.getElementById('clearPasswordInput').value = '';
+                    document.getElementById('clearPasswordInput').focus();
+                }
+            })
+            .catch(function(err) {
+                errorDiv.textContent = '网络错误，请稍后重试';
+                errorDiv.style.display = 'block';
+            })
+            .finally(function() {
+                btn.disabled = false;
+                btn.textContent = '🔓 验证并清空';
+            });
+        }
+
+        // 执行清空所有
+        function executeClearAll() {
+            fetch('/api/prediction/clear', { method: 'POST' })
+            .then(function(response) { return response.json(); })
+            .then(function(data) {
+                if (data.success) {
+                    // 记录操作日志
+                    fetch('/api/operation-logs/log', {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({
+                            action: 'CLEAR',
+                            module: '预测历史',
+                            table_name: 'prediction_records',
+                            new_value: {deleted_count: data.deleted_count},
+                            status: 'success'
+                        })
+                    });
+                    loadHistory(1);
+                } else {
+                    alert('清空失败: ' + (data.error || '未知错误'));
+                }
+            });
+        }
+
+        // 执行操作
+        function executeAction(action) {
+            switch(action.type) {
+                case 'delete_single':
+                    fetch('/api/prediction/delete', {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({id: action.recordId})
+                    })
+                    .then(function(response) { return response.json(); })
+                    .then(function(data) {
+                        if (data.success) {
+                            // 记录操作日志
+                            fetch('/api/operation-logs/log', {
+                                method: 'POST',
+                                headers: {'Content-Type': 'application/json'},
+                                body: JSON.stringify({
+                                    action: 'DELETE',
+                                    module: '预测历史',
+                                    table_name: 'prediction_records',
+                                    record_id: action.recordId,
+                                    status: 'success'
+                                })
+                            });
+                            loadHistory(currentPage);
+                        } else {
+                            alert('删除失败: ' + (data.error || '未知错误'));
+                        }
+                    });
+                    break;
+                case 'clear_all':
+                    // 显示密码验证弹窗
+                    document.getElementById('passwordVerifyModal').style.display = 'flex';
+                    setTimeout(function() {
+                        document.getElementById('clearPasswordInput').focus();
+                    }, 200);
+                    break;
+            }
+        }
+
+        // ============================================================
+        // 导出功能
+        // ============================================================
+        let currentExportId = null;
+
+        // 显示导出菜单
+        function showExportMenu(recordId) {
+            currentExportId = recordId;
+            document.getElementById('exportMenu').style.display = 'flex';
+        }
+
+        // 关闭导出菜单
+        function closeExportMenu() {
+            document.getElementById('exportMenu').style.display = 'none';
+        }
+
+        // 执行导出
+        function exportRecord(format) {
+            if (!currentExportId) return;
+            
+            closeExportMenu();
+            
+            // 使用 window.open 直接下载
+            const url = `/api/prediction/export/${currentExportId}/${format}`;
+            window.open(url, '_blank');
+        }
+    </script>
+{% endblock %}

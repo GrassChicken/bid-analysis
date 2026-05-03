@@ -1,0 +1,439 @@
+{% extends "base.html" %}
+
+{% block title %}📊 仪表盘 - 工程开标数据智能分析平台 V6.0{% endblock %}
+
+{% block page_title %}🏗️ 工程开标数据智能分析平台 <span class="version">V6.0</span>{% endblock %}
+
+{% block header_actions %}
+    <span class="user-welcome">👤 {{ username }}</span>
+    <button class="btn btn-secondary" onclick="window.location.href='/user-center'">👤 个人中心</button>
+    {% if is_admin %}<button class="btn btn-secondary" onclick="window.location.href='/operation-logs'">📋 操作日志</button>{% endif %}
+    {% if is_admin %}<button class="btn btn-primary" onclick="window.location.href='/admin/users'">👥 用户管理</button>{% endif %}
+    <button class="btn btn-danger" onclick="showLogoutModal()">🚪 退出登录</button>
+{% endblock %}
+
+{% block extra_head %}
+    <link rel="stylesheet" href="/static/css/dashboard.css">
+{% endblock %}
+
+{% block content %}
+<!-- 数据概览卡片 -->
+<div class="stats-grid">
+    <div class="stat-card stat-purple">
+        <div class="label">📦 总数据量</div>
+        <div class="value" id="totalCount">{{ total_count }}</div>
+        <div class="sub">条记录</div>
+    </div>
+    <div class="stat-card stat-green">
+        <div class="label">📈 今日新增</div>
+        <div class="value" id="todayCount">{{ today_count }}</div>
+        <div class="sub">条记录</div>
+    </div>
+    <div class="stat-card stat-blue">
+        <div class="label">🎯 本月预测</div>
+        <div class="value" id="monthPredictions">{{ month_predictions }}</div>
+        <div class="sub">次</div>
+    </div>
+    <div class="stat-card stat-orange">
+        <div class="label">🤖 AI 分析</div>
+        <div class="value" id="aiUsedCount">{{ ai_used_count }}</div>
+        <div class="sub">次</div>
+    </div>
+</div>
+
+<!-- 功能入口 -->
+<div class="section">
+    <div class="section-title">🚀 快速入口</div>
+    <div class="func-grid">
+        <div class="func-card">
+            <h3>📊 数据管理</h3>
+            <p>导入历史数据,查看统计图表</p>
+            <button class="btn btn-primary" onclick="window.location.href='/data'">进入数据管理</button>
+        </div>
+        <div class="func-card">
+            <h3>🎯 智能预测</h3>
+            <p>20+ 统计算法 + AI 智能分析</p>
+            <button class="btn btn-primary" style="background: linear-gradient(135deg, #27ae60 0%, #2ecc71 100%);" onclick="window.location.href='/predict'">开始预测</button>
+        </div>
+        <div class="func-card">
+            <h3>📋 预测历史</h3>
+            <p>查看历史预测记录及对比</p>
+            <button class="btn btn-primary" style="background: linear-gradient(135deg, #3498db 0%, #2980b9 100%);" onclick="window.location.href='/prediction/history'">查看历史</button>
+        </div>
+        <div class="func-card">
+            <h3>📈 预测准确率分析</h3>
+            <p>对比预测值与真实值，评估预测效果</p>
+            <button class="btn btn-primary" style="background: linear-gradient(135deg, #9b59b6 0%, #8e44ad 100%);" onclick="window.location.href='/accuracy'">查看分析</button>
+        </div>
+        <div class="func-card">
+            <h3>🧠 智能诊断引擎</h3>
+            <p>预测异常检测、算法表现评估、置信度校准</p>
+            <button class="btn btn-primary" style="background: linear-gradient(135deg, #e17055 0%, #d63031 100%);" onclick="window.location.href='/diagnosis'">开始诊断</button>
+        </div>
+    </div>
+</div>
+
+<!-- 最近一次预测 & 近期准确率 -->
+<div class="section">
+    <div class="section-title">📊 预测动态</div>
+    <div class="dashboard-info-grid">
+        <!-- 最近一次预测 -->
+        <div class="info-card info-card--latest">
+            <div class="info-card__header">
+                <span class="info-card__icon">🔮</span>
+                <h4>最近一次预测</h4>
+            </div>
+            {% if latest_prediction %}
+            <div class="info-card__body">
+                <div class="info-row">
+                    <span class="info-row__label">项目名称</span>
+                    <span class="info-row__value">{{ latest_prediction.project_name or '未命名' }}</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-row__label">预测时间</span>
+                    <span class="info-row__value">{{ latest_prediction.prediction_time }}</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-row__label">数据量</span>
+                    <span class="info-row__value">{{ latest_prediction.data_count }} 条</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-row__label">方法类别</span>
+                    <span class="info-row__value method-val">方法{{ latest_prediction.method_prediction }}</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-row__label">K1 预测</span>
+                    <span class="info-row__value k1-val">{{ latest_prediction.k1_prediction or '--' }}</span>
+                </div>
+                {% if latest_prediction.method_prediction != '1' %}
+                <div class="info-row">
+                    <span class="info-row__label">Q1 预测</span>
+                    <span class="info-row__value q1-val">{{ latest_prediction.q1_prediction or '--' }}</span>
+                </div>
+                {% endif %}
+            </div>
+            <div class="info-card__footer">
+                <a href="/prediction/history" class="info-card__link">查看全部 →</a>
+            </div>
+            {% else %}
+            <div class="info-card__body info-card__body--empty">
+                <div class="empty-icon">📋</div>
+                <p>暂无预测记录</p>
+                <a href="/predict" class="info-card__link">开始预测 →</a>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- 近期预测准确率 -->
+        <div class="info-card info-card--accuracy">
+            <div class="info-card__header">
+                <span class="info-card__icon">🎯</span>
+                <h4>近 7 天预测准确率</h4>
+            </div>
+            {% if recent_accuracy and recent_accuracy['total_checked'] > 0 %}
+            <div class="info-card__body">
+                <div class="info-row">
+                    <span class="info-row__label">已对比记录</span>
+                    <span class="info-row__value">{{ recent_accuracy['total_checked'] }} 条</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-row__label">方法类别准确率</span>
+                    <span class="info-row__value method-val">{{ recent_accuracy['method_accuracy'] }}%</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-row__label">K1 精准率</span>
+                    <span class="info-row__value k1-val">{{ recent_accuracy['k1_accuracy'] }}%</span>
+                </div>
+                {% if recent_accuracy['q1_accuracy'] > 0 or recent_accuracy['q1_accurate'] > 0 %}
+                <div class="info-row">
+                    <span class="info-row__label">Q1 精准率</span>
+                    <span class="info-row__value q1-val">{{ recent_accuracy['q1_accuracy'] }}%</span>
+                </div>
+                {% endif %}
+            </div>
+            <div class="info-card__footer">
+                <a href="/accuracy" class="info-card__link">详细分析 →</a>
+            </div>
+            {% else %}
+            <div class="info-card__body info-card__body--empty">
+                <div class="empty-icon">📊</div>
+                <p>暂无准确率数据</p>
+                <span class="empty-hint">请先录入真实值</span>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- 数据分布图表 -->
+<div class="section">
+    <div class="section-title">📈 数据分布分析</div>
+    <div class="charts-grid">
+        <div class="chart-card">
+            <div class="chart-card__header">
+                <span class="chart-card__icon">📍</span>
+                <h4>开标地点分布</h4>
+            </div>
+            <div class="chart-card__body">
+                <canvas id="locationChart"></canvas>
+            </div>
+        </div>
+        <div class="chart-card">
+            <div class="chart-card__header">
+                <span class="chart-card__icon">📂</span>
+                <h4>方法类别占比</h4>
+            </div>
+            <div class="chart-card__body">
+                <canvas id="methodChart"></canvas>
+            </div>
+        </div>
+        <div class="chart-card">
+            <div class="chart-card__header">
+                <span class="chart-card__icon">🎯</span>
+                <h4>K1 值分布</h4>
+            </div>
+            <div class="chart-card__body">
+                <canvas id="k1Chart"></canvas>
+            </div>
+        </div>
+        <div class="chart-card">
+            <div class="chart-card__header">
+                <span class="chart-card__icon">⚙️</span>
+                <h4>Q1 值分布</h4>
+            </div>
+            <div class="chart-card__body">
+                <canvas id="q1Chart"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 退出登录模态框 -->
+<div id="logoutModal" class="modal-overlay" onclick="if(event.target === this) hideLogoutModal()" style="display:none;">
+    <div class="modal-content">
+        <h3>👋 确认退出？</h3>
+        <p>您确定要退出当前账号吗？</p>
+        <div class="modal-buttons">
+            <button onclick="hideLogoutModal()" class="btn btn-secondary">取消</button>
+            <button onclick="performLogout()" class="btn btn-danger">确认退出</button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+    <script src="/static/js/pages/dashboard.js"></script>
+    <script>
+        // 从后端获取的数据
+        const methodDistribution = {{ method_distribution | safe }};
+        const k1Distribution = {{ k1_distribution | safe }};
+        const q1Distribution = {{ q1_distribution | safe }};
+        const locationDistribution = {{ location_distribution | safe }};
+        
+        // 通用图表配置
+        const chartDefaults = {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    position: 'bottom',
+                    labels: {
+                        usePointStyle: true,
+                        pointStyle: 'circle',
+                        padding: 15,
+                        font: { size: 11, weight: '500' }
+                    }
+                }
+            }
+        };
+        
+        // 1. 开标地点分布 - 环形图
+        const locLabels = Object.keys(locationDistribution);
+        const locData = Object.values(locationDistribution);
+        if (locLabels.length > 0) {
+            const locColors = ['#3498db', '#2ecc71', '#e74c3c', '#f39c12', '#9b59b6', '#1abc9c', '#e67e22', '#34495e'];
+            new Chart(document.getElementById('locationChart').getContext('2d'), {
+                type: 'doughnut',
+                data: {
+                    labels: locLabels,
+                    datasets: [{
+                        data: locData,
+                        backgroundColor: locColors.slice(0, locLabels.length),
+                        borderWidth: 2,
+                        borderColor: '#fff',
+                        hoverOffset: 8
+                    }]
+                },
+                options: {
+                    ...chartDefaults,
+                    cutout: '55%',
+                    plugins: {
+                        ...chartDefaults.plugins,
+                        tooltip: {
+                            callbacks: {
+                                label: function(ctx) {
+                                    const total = ctx.dataset.data.reduce((a, b) => a + b, 0);
+                                    const pct = Math.round(ctx.parsed / total * 100);
+                                    return ctx.label + ': ' + ctx.parsed + ' 条 (' + pct + '%)';
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        } else {
+            document.getElementById('locationChart').parentElement.innerHTML = '<div class="chart-empty">暂无地点数据</div>';
+        }
+        
+        // 2. 方法类别占比 - 环形图
+        const methodLabels = Object.keys(methodDistribution);
+        const methodData = Object.values(methodDistribution);
+        if (methodLabels.length > 0) {
+            new Chart(document.getElementById('methodChart').getContext('2d'), {
+                type: 'doughnut',
+                data: {
+                    labels: methodLabels.map(m => '方法 ' + m),
+                    datasets: [{
+                        data: methodData,
+                        backgroundColor: ['#667eea', '#27ae60'],
+                        borderWidth: 2,
+                        borderColor: '#fff',
+                        hoverOffset: 8
+                    }]
+                },
+                options: {
+                    ...chartDefaults,
+                    cutout: '55%',
+                    plugins: {
+                        ...chartDefaults.plugins,
+                        tooltip: {
+                            callbacks: {
+                                label: function(ctx) {
+                                    const total = ctx.dataset.data.reduce((a, b) => a + b, 0);
+                                    const pct = Math.round(ctx.parsed / total * 100);
+                                    return ctx.label + ': ' + ctx.parsed + ' 条 (' + pct + '%)';
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        } else {
+            document.getElementById('methodChart').parentElement.innerHTML = '<div class="chart-empty">暂无方法数据</div>';
+        }
+        
+        // 3. K1 值分布 - 柱形图
+        const k1Labels = Object.keys(k1Distribution);
+        const k1Data = Object.values(k1Distribution);
+        if (k1Labels.length > 0) {
+            const k1Total = k1Data.reduce((a, b) => a + b, 0);
+            new Chart(document.getElementById('k1Chart').getContext('2d'), {
+                type: 'bar',
+                data: {
+                    labels: k1Labels,
+                    datasets: [{
+                        label: '记录数',
+                        data: k1Data,
+                        backgroundColor: 'rgba(155, 89, 182, 0.7)',
+                        borderColor: 'rgba(155, 89, 182, 1)',
+                        borderWidth: 1,
+                        borderRadius: 6,
+                        borderSkipped: false
+                    }]
+                },
+                options: {
+                    ...chartDefaults,
+                    plugins: {
+                        ...chartDefaults.plugins,
+                        legend: { display: false },
+                        tooltip: {
+                            callbacks: {
+                                label: function(ctx) {
+                                    const count = ctx.parsed.y;
+                                    const pct = Math.round(count / k1Total * 100);
+                                    return '数量: ' + count + ' 条 (' + pct + '%)';
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: { precision: 0, font: { size: 10 } },
+                            grid: { color: 'rgba(0,0,0,0.05)' }
+                        },
+                        x: {
+                            ticks: { font: { size: 10 } },
+                            grid: { display: false }
+                        }
+                    }
+                }
+            });
+        } else {
+            document.getElementById('k1Chart').parentElement.innerHTML = '<div class="chart-empty">暂无 K1 数据</div>';
+        }
+        
+        // 4. Q1 值分布 - 柱形图（排除空值）
+        const q1Labels = Object.keys(q1Distribution).filter(function(v) { return v !== '' && v !== 'null' && v !== null; });
+        const q1Data = q1Labels.map(function(l) { return q1Distribution[l]; });
+        if (q1Labels.length > 0) {
+            const q1Total = q1Data.reduce((a, b) => a + b, 0);
+            new Chart(document.getElementById('q1Chart').getContext('2d'), {
+                type: 'bar',
+                data: {
+                    labels: q1Labels,
+                    datasets: [{
+                        label: '记录数',
+                        data: q1Data,
+                        backgroundColor: 'rgba(52, 152, 219, 0.7)',
+                        borderColor: 'rgba(52, 152, 219, 1)',
+                        borderWidth: 1,
+                        borderRadius: 6,
+                        borderSkipped: false
+                    }]
+                },
+                options: {
+                    ...chartDefaults,
+                    plugins: {
+                        ...chartDefaults.plugins,
+                        legend: { display: false },
+                        tooltip: {
+                            callbacks: {
+                                label: function(ctx) {
+                                    const count = ctx.parsed.y;
+                                    const pct = Math.round(count / q1Total * 100);
+                                    return '数量: ' + count + ' 条 (' + pct + '%)';
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: { precision: 0, font: { size: 10 } },
+                            grid: { color: 'rgba(0,0,0,0.05)' }
+                        },
+                        x: {
+                            ticks: { font: { size: 10 } },
+                            grid: { display: false }
+                        }
+                    }
+                }
+            });
+        } else {
+            document.getElementById('q1Chart').parentElement.innerHTML = '<div class="chart-empty">暂无 Q1 数据</div>';
+        }
+        
+        // 退出登录
+        function showLogoutModal() {
+            document.getElementById('logoutModal').style.display = 'flex';
+        }
+        function hideLogoutModal() {
+            document.getElementById('logoutModal').style.display = 'none';
+        }
+        function performLogout() {
+            fetch('/api/auth/logout', {method: 'POST'})
+            .then(function() { window.location.href = '/login'; });
+        }
+    </script>
+{% endblock %}

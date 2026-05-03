@@ -1,0 +1,608 @@
+/* ===========================
+   V6.0 智能诊断引擎页面样式
+   =========================== */
+
+/* ========== 顶部导航按钮 ========== */
+.header-actions {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+.header-actions .btn {
+    font-size: 15px;
+    padding: 10px 20px;
+    font-weight: 600;
+    line-height: 1.4;
+    border-radius: 12px;
+    border: none;
+    cursor: pointer;
+    transition: all 0.25s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    white-space: nowrap;
+}
+
+/* 返回仪表盘 - 粉紫渐变 */
+.header-actions .btn-dashboard {
+    background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+    color: white;
+    box-shadow: 0 3px 12px rgba(245, 87, 108, 0.3);
+}
+.header-actions .btn-dashboard:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(245, 87, 108, 0.4);
+}
+.header-actions .btn-dashboard:active {
+    transform: translateY(0);
+    box-shadow: 0 2px 8px rgba(245, 87, 108, 0.3);
+}
+
+/* 智能预测 - 紫色渐变 */
+.header-actions .btn-predict {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    box-shadow: 0 3px 12px rgba(102, 126, 234, 0.3);
+}
+.header-actions .btn-predict:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+}
+.header-actions .btn-predict:active {
+    transform: translateY(0);
+    box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+}
+
+/* 准确率分析 - 蓝青渐变 */
+.header-actions .btn-history {
+    background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+    color: white;
+    box-shadow: 0 3px 12px rgba(79, 172, 254, 0.3);
+}
+.header-actions .btn-history:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(79, 172, 254, 0.4);
+}
+.header-actions .btn-history:active {
+    transform: translateY(0);
+    box-shadow: 0 2px 8px rgba(79, 172, 254, 0.3);
+}
+
+/* ========== 页面头部横幅 ========== */
+.hero-banner {
+    position: relative;
+    background: linear-gradient(135deg, #e17055 0%, #d63031 50%, #fdcb6e 100%);
+    border-radius: 20px;
+    padding: 32px 28px;
+    margin-bottom: 24px;
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    overflow: hidden;
+    box-shadow: 0 8px 32px rgba(214, 48, 49, 0.3);
+}
+.hero-banner::before {
+    content: '';
+    position: absolute;
+    top: -50%;
+    right: -10%;
+    width: 300px;
+    height: 300px;
+    background: radial-gradient(circle, rgba(255,255,255,0.15) 0%, transparent 70%);
+    border-radius: 50%;
+}
+.hero-icon {
+    font-size: 56px;
+    line-height: 1;
+    position: relative;
+    z-index: 1;
+    animation: heroFloat 3s ease-in-out infinite;
+}
+@keyframes heroFloat {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-8px); }
+}
+.hero-text {
+    position: relative;
+    z-index: 1;
+    flex: 1;
+}
+.hero-text h2 {
+    color: white;
+    font-size: 1.6em;
+    font-weight: 700;
+    margin: 0 0 6px;
+    text-shadow: 0 2px 8px rgba(0,0,0,0.15);
+}
+.hero-text p {
+    color: rgba(255,255,255,0.9);
+    font-size: 1.15em;
+    margin: 0;
+}
+
+/* ========== 诊断概览卡片 ========== */
+.overview-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+    margin-bottom: 24px;
+}
+.overview-card {
+    background: white;
+    border-radius: 16px;
+    padding: 24px 20px;
+    text-align: center;
+    cursor: pointer;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.06);
+    border: 2px solid transparent;
+    transition: all 0.3s ease;
+}
+.overview-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+    border-color: #e17055;
+}
+.overview-card__icon {
+    font-size: 2.5em;
+    margin-bottom: 10px;
+}
+.overview-card__title {
+    font-size: 1.1em;
+    font-weight: 700;
+    color: #2c3e50;
+    margin-bottom: 6px;
+}
+.overview-card__desc {
+    font-size: 0.85em;
+    color: #7f8c8d;
+    line-height: 1.5;
+}
+
+/* ========== 诊断面板 ========== */
+.diagnosis-panel {
+    background: white;
+    border-radius: 20px;
+    padding: 0;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.06);
+    margin-bottom: 24px;
+    overflow: hidden;
+    border: 1px solid rgba(0,0,0,0.04);
+}
+.diagnosis-panel.hidden { display: none !important; }
+
+.panel-header {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 20px 24px 16px;
+    border-bottom: 1px solid #f0f0f0;
+    background: linear-gradient(135deg, #fff8f5 0%, #fff0eb 100%);
+}
+.panel-header__icon {
+    width: 54px;
+    height: 54px;
+    background: linear-gradient(135deg, #e17055 0%, #d63031 100%);
+    border-radius: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 28px;
+    box-shadow: 0 4px 14px rgba(225, 112, 85, 0.3);
+}
+.panel-header h3 {
+    font-size: 1.35em;
+    color: #2c3e50;
+    margin: 0 0 2px;
+    font-weight: 700;
+}
+.panel-header__desc {
+    font-size: 1em;
+    color: #95a5a6;
+    margin: 0;
+}
+
+.panel-body {
+    padding: 20px 24px 24px;
+}
+
+/* ========== 异常检测 ========== */
+.anomaly-selector {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 20px;
+    align-items: center;
+}
+.diagnosis-select {
+    flex: 1;
+    padding: 14px 18px;
+    border: 2px solid #e8ecf1;
+    border-radius: 13px;
+    font-size: 16px;
+    background: #f8f9fb;
+    color: #2c3e50;
+    cursor: pointer;
+}
+.diagnosis-select:focus {
+    outline: none;
+    border-color: #e17055;
+    background: white;
+    box-shadow: 0 0 0 4px rgba(225, 112, 85, 0.12);
+}
+
+.diagnosis-btn {
+    padding: 14px 28px;
+    border: none;
+    border-radius: 13px;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    white-space: nowrap;
+}
+.diagnosis-btn--primary {
+    background: linear-gradient(135deg, #e17055 0%, #d63031 100%);
+    color: white;
+    box-shadow: 0 4px 12px rgba(214, 48, 49, 0.3);
+}
+.diagnosis-btn--primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 18px rgba(214, 48, 49, 0.4);
+}
+
+/* 诊断结果 */
+.diagnosis-summary {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 18px 20px;
+    background: linear-gradient(135deg, #f0f4ff 0%, #e8f0fe 100%);
+    border-radius: 14px;
+    margin-bottom: 16px;
+    border-left: 4px solid #667eea;
+}
+.diagnosis-summary__icon {
+    font-size: 1.8em;
+}
+.diagnosis-summary__text {
+    font-size: 1.1em;
+    font-weight: 600;
+    color: #2c3e50;
+}
+.diagnosis-summary__meta {
+    margin-left: auto;
+    font-size: 0.9em;
+    color: #7f8c8d;
+}
+
+/* 警告卡片 */
+.warning-card {
+    padding: 18px 20px;
+    border-radius: 14px;
+    margin-bottom: 12px;
+    border-left: 4px solid;
+}
+.warning-card--high {
+    background: #fff5f5;
+    border-color: #e74c3c;
+}
+.warning-card--medium {
+    background: #fff9e6;
+    border-color: #f39c12;
+}
+.warning-card--success {
+    background: #f0fff4;
+    border-color: #27ae60;
+}
+.warning-card__title {
+    font-size: 1.1em;
+    font-weight: 700;
+    color: #2c3e50;
+    margin-bottom: 6px;
+}
+.warning-card__message {
+    font-size: 0.95em;
+    color: #555;
+    margin-bottom: 8px;
+    line-height: 1.5;
+}
+.warning-card__suggestion {
+    font-size: 0.9em;
+    color: #e17055;
+    font-weight: 600;
+}
+
+/* 加载状态 */
+.loading-spinner {
+    text-align: center;
+    padding: 40px;
+    font-size: 1.2em;
+    color: #7f8c8d;
+    animation: pulse 1.5s ease-in-out infinite;
+}
+@keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+}
+
+/* 空状态 */
+.empty-state {
+    text-align: center;
+    padding: 60px 24px;
+}
+.empty-state__icon {
+    font-size: 3.5em;
+    margin-bottom: 16px;
+    opacity: 0.7;
+}
+.empty-state h3 {
+    font-size: 1.2em;
+    color: #2c3e50;
+    margin: 0 0 8px;
+}
+.empty-state p {
+    font-size: 0.9em;
+    color: #95a5a6;
+}
+
+/* ========== 算法表现评估 ========== */
+.performance-overview {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+    margin-bottom: 24px;
+}
+.perf-stat {
+    background: #f5f7fa;
+    border-radius: 14px;
+    padding: 20px;
+    text-align: center;
+}
+.perf-stat--k1 { border-left: 4px solid #3498db; }
+.perf-stat--q1 { border-left: 4px solid #9b59b6; }
+.perf-stat__label {
+    font-size: 0.85em;
+    color: #7f8c8d;
+    font-weight: 500;
+    margin-bottom: 8px;
+}
+.perf-stat__value {
+    font-size: 1.8em;
+    font-weight: 800;
+    color: #2c3e50;
+}
+.perf-stat__sub {
+    font-size: 0.85em;
+    color: #95a5a6;
+    margin-top: 4px;
+}
+
+.method-section-title {
+    font-size: 1.15em;
+    color: #2c3e50;
+    margin: 24px 0 12px;
+    padding-bottom: 8px;
+    border-bottom: 2px solid #f0f0f0;
+}
+
+/* 算法排名表格 */
+.method-table {
+    border-radius: 14px;
+    overflow: hidden;
+    border: 1px solid #e8ecf1;
+}
+.method-table__header {
+    display: grid;
+    grid-template-columns: 60px 1fr 80px 80px 100px;
+    gap: 10px;
+    padding: 14px 18px;
+    background: linear-gradient(135deg, #e17055 0%, #d63031 100%);
+    color: white;
+    font-weight: 700;
+    font-size: 0.9em;
+}
+.method-table__row {
+    display: grid;
+    grid-template-columns: 60px 1fr 80px 80px 100px;
+    gap: 10px;
+    padding: 12px 18px;
+    background: white;
+    border-bottom: 1px solid #f0f0f0;
+    align-items: center;
+    transition: background 0.2s;
+}
+.method-table__row:hover {
+    background: #f8f9fb;
+}
+.method-table__row:last-child {
+    border-bottom: none;
+}
+
+.rank-badge {
+    display: inline-block;
+    width: 32px;
+    height: 32px;
+    line-height: 32px;
+    text-align: center;
+    border-radius: 8px;
+    font-weight: 700;
+    font-size: 0.9em;
+}
+.rank-1 .rank-badge { background: linear-gradient(135deg, #ffd700, #ffb700); color: white; }
+.rank-2 .rank-badge { background: linear-gradient(135deg, #c0c0c0, #a0a0a0); color: white; }
+.rank-3 .rank-badge { background: linear-gradient(135deg, #cd7f32, #b87333); color: white; }
+
+.method-name {
+    font-weight: 600;
+    color: #2c3e50;
+}
+.method-count {
+    text-align: center;
+    color: #7f8c8d;
+    font-size: 0.9em;
+}
+.method-accuracy {
+    text-align: center;
+    font-weight: 700;
+    color: #27ae60;
+}
+.method-deviation {
+    text-align: center;
+    color: #e74c3c;
+    font-size: 0.9em;
+    font-weight: 600;
+}
+
+/* ========== 置信度校准 ========== */
+.calibration-summary {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 18px 20px;
+    background: linear-gradient(135deg, #f0f4ff 0%, #e8f0fe 100%);
+    border-radius: 14px;
+    margin-bottom: 20px;
+    border-left: 4px solid #667eea;
+}
+.calibration-summary__icon { font-size: 1.8em; }
+.calibration-summary__text { font-size: 1.05em; font-weight: 600; color: #2c3e50; }
+.calibration-summary__meta { margin-left: auto; font-size: 0.9em; color: #7f8c8d; }
+
+.calibration-table {
+    border-radius: 14px;
+    overflow: hidden;
+    border: 1px solid #e8ecf1;
+    margin-bottom: 16px;
+}
+.calibration-table__header {
+    display: grid;
+    grid-template-columns: 100px 100px 120px 100px;
+    gap: 10px;
+    padding: 14px 18px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    font-weight: 700;
+    font-size: 0.9em;
+}
+.calibration-table__row {
+    display: grid;
+    grid-template-columns: 100px 100px 120px 100px;
+    gap: 10px;
+    padding: 12px 18px;
+    background: white;
+    border-bottom: 1px solid #f0f0f0;
+    align-items: center;
+}
+.calibration-table__row:last-child { border-bottom: none; }
+
+.cal-status {
+    display: inline-block;
+    padding: 4px 12px;
+    border-radius: 8px;
+    font-size: 0.85em;
+    font-weight: 600;
+}
+.cal-status--over { background: #fee; color: #c33; }
+.cal-status--under { background: #fff9e6; color: #d4a017; }
+.cal-status--ok { background: #d4edda; color: #155724; }
+.cal-status--unknown { background: #f0f0f0; color: #95a5a6; }
+
+.calibration-tip {
+    padding: 14px 18px;
+    border-radius: 12px;
+    margin-bottom: 10px;
+    font-size: 0.95em;
+    line-height: 1.5;
+}
+.calibration-tip--warn {
+    background: #fff5f5;
+    border-left: 4px solid #e74c3c;
+    color: #c33;
+}
+.calibration-tip--info {
+    background: #fff9e6;
+    border-left: 4px solid #f39c12;
+    color: #d4a017;
+}
+
+/* ========== 响应式 ========== */
+@media (max-width: 1024px) {
+    .overview-grid {
+        grid-template-columns: 1fr;
+        gap: 12px;
+    }
+    .performance-overview {
+        grid-template-columns: 1fr;
+    }
+    .method-table__header,
+    .method-table__row {
+        grid-template-columns: 50px 1fr 60px 60px 80px;
+        font-size: 0.85em;
+        padding: 10px 14px;
+    }
+}
+
+@media (max-width: 768px) {
+    /* 顶部导航按钮 - 手机端 */
+    .header-actions {
+        gap: 8px;
+    }
+    .header-actions .btn {
+        font-size: 13px;
+        padding: 8px 14px;
+        border-radius: 10px;
+    }
+
+    .hero-banner {
+        padding: 22px 20px;
+        gap: 14px;
+    }
+    .hero-icon { font-size: 42px; }
+    .hero-text h2 { font-size: 1.2em; }
+    .hero-text p { font-size: 0.9em; }
+    
+    .anomaly-selector {
+        flex-direction: column;
+    }
+    .diagnosis-btn {
+        width: 100%;
+    }
+    
+    .method-table__header,
+    .method-table__row {
+        grid-template-columns: 40px 1fr 50px 50px;
+    }
+    .method-table__header span:last-child,
+    .method-table__row .method-deviation {
+        display: none;
+    }
+    
+    .calibration-table__header,
+    .calibration-table__row {
+        grid-template-columns: 80px 70px 90px 80px;
+        font-size: 0.85em;
+        padding: 10px 14px;
+    }
+}
+
+@media (max-width: 480px) {
+    .hero-banner {
+        padding: 18px 16px;
+    }
+    .hero-icon { font-size: 36px; }
+    .hero-text h2 { font-size: 1.1em; }
+    
+    .diagnosis-panel {
+        border-radius: 14px;
+    }
+    .panel-header {
+        padding: 16px 18px 14px;
+    }
+    .panel-header__icon {
+        width: 44px;
+        height: 44px;
+        font-size: 22px;
+    }
+    .panel-body {
+        padding: 16px 18px;
+    }
+}
