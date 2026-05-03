@@ -39,6 +39,7 @@ def create_app():
     from routes.accuracy import accuracy_bp
     from routes.user_admin import user_admin_bp
     from routes.diagnosis import diagnosis_bp
+    from routes.backup import backup_bp
     
     app.register_blueprint(auth_bp)
     app.register_blueprint(dashboard_bp)
@@ -51,6 +52,7 @@ def create_app():
     app.register_blueprint(accuracy_bp)
     app.register_blueprint(user_admin_bp)
     app.register_blueprint(diagnosis_bp)
+    app.register_blueprint(backup_bp)
 
     # 全局请求前处理 - 检查登录状态
     @app.before_request

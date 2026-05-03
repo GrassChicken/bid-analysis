@@ -1,0 +1,845 @@
+{% extends "base.html" %}
+
+{% block title %}💾 数据备份 - 工程开标数据智能分析平台 V6.0{% endblock %}
+
+{% block page_title %}💾 数据备份与恢复{% endblock %}
+
+{% block header_actions %}
+    <button class="btn btn-home" onclick="window.location.href='/dashboard'">🏠 返回仪表盘</button>
+{% endblock %}
+
+{% block extra_head %}
+<style>
+/* 页面头部容器 - 与智能预测页面一致 */
+.header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 24px;
+    padding-bottom: 16px;
+    border-bottom: 2px solid #ecf0f1;
+    flex-wrap: wrap;
+    gap: 12px;
+}
+.header h1 {
+    color: #2c3e50;
+    font-size: 1.6em;
+    margin: 0;
+}
+.header-actions {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    align-items: center;
+}
+.header-actions .btn {
+    font-size: 14px;
+    padding: 8px 16px;
+    font-weight: 600;
+    line-height: 1.4;
+    border-radius: 10px;
+    border: none;
+    cursor: pointer;
+    transition: all 0.25s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    white-space: nowrap;
+    text-decoration: none;
+    width: auto !important;
+    flex: none !important;
+}
+.header-actions .btn-home {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    box-shadow: 0 3px 12px rgba(102, 126, 234, 0.3);
+}
+.header-actions .btn-home:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+}
+.header-actions .btn-home:active {
+    transform: translateY(0);
+    box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+}
+@media (max-width: 768px) {
+    .header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 10px;
+        margin-bottom: 16px;
+        padding-bottom: 12px;
+    }
+    .header h1 {
+        font-size: 1.2em;
+    }
+    .header-actions {
+        width: 100%;
+    }
+    .header-actions .btn {
+        font-size: 13px;
+        padding: 7px 12px;
+        width: auto !important;
+        min-width: unset;
+        flex-shrink: 0;
+    }
+}
+
+/* 备份管理页面样式 */
+.backup-stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 16px;
+    margin-bottom: 24px;
+}
+.backup-stat-card {
+    background: #fff;
+    border-radius: 12px;
+    padding: 20px;
+    text-align: center;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+}
+.backup-stat-card .icon {
+    font-size: 32px;
+    margin-bottom: 8px;
+}
+.backup-stat-card .value {
+    font-size: 28px;
+    font-weight: 700;
+    color: #333;
+}
+.backup-stat-card .label {
+    font-size: 13px;
+    color: #999;
+    margin-top: 4px;
+}
+.backup-actions {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 24px;
+    flex-wrap: wrap;
+}
+.backup-actions .btn {
+    padding: 10px 20px;
+    border-radius: 10px;
+    border: none;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.25s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+.btn-create {
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    color: #fff;
+    box-shadow: 0 3px 12px rgba(102,126,234,0.3);
+}
+.btn-create:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(102,126,234,0.4); }
+.btn-create:active { transform: translateY(0); }
+
+.btn-cleanup {
+    background: linear-gradient(135deg, #f093fb, #f5576c);
+    color: #fff;
+    box-shadow: 0 3px 12px rgba(245,87,108,0.3);
+}
+.btn-cleanup:hover { transform: translateY(-2px); }
+
+/* 备份列表 */
+.backup-list {
+    background: #fff;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+}
+.backup-list-header {
+    padding: 16px 20px;
+    background: #f8f9fa;
+    border-bottom: 1px solid #eee;
+    font-weight: 600;
+    color: #333;
+}
+.backup-item {
+    display: grid;
+    grid-template-columns: 2fr 1.5fr 1fr 1fr 120px;
+    gap: 12px;
+    padding: 14px 20px;
+    border-bottom: 1px solid #f0f0f0;
+    align-items: center;
+    transition: background 0.2s;
+}
+.backup-item:hover { background: #f8f9fa; }
+.backup-item:last-child { border-bottom: none; }
+
+.backup-filename {
+    font-weight: 500;
+    color: #333;
+    word-break: break-all;
+}
+.backup-time {
+    font-size: 13px;
+    color: #666;
+}
+.backup-size {
+    font-size: 13px;
+    color: #999;
+}
+.backup-type {
+    font-size: 12px;
+    padding: 3px 8px;
+    border-radius: 20px;
+    text-align: center;
+    font-weight: 500;
+}
+.type-manual { background: #e8f5e9; color: #2e7d32; }
+.type-auto { background: #e3f2fd; color: #1565c0; }
+.type-pre_restore { background: #fff3e0; color: #e65100; }
+
+.backup-actions-cell {
+    display: flex;
+    gap: 6px;
+}
+.backup-actions-cell .btn-sm {
+    padding: 5px 10px;
+    border-radius: 6px;
+    border: 1px solid #ddd;
+    background: #fff;
+    font-size: 12px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+.btn-restore:hover { background: #667eea; color: #fff; border-color: #667eea; }
+.btn-download:hover { background: #4caf50; color: #fff; border-color: #4caf50; }
+.btn-delete:hover { background: #f44336; color: #fff; border-color: #f44336; }
+
+/* 空状态 */
+.backup-empty {
+    padding: 60px 20px;
+    text-align: center;
+    color: #999;
+}
+.backup-empty .icon { font-size: 48px; margin-bottom: 12px; }
+
+/* 加载状态 */
+.backup-loading {
+    padding: 40px;
+    text-align: center;
+    color: #666;
+}
+
+/* 操作确认模态框 */
+.modal-backdrop {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0,0,0,0.5);
+    backdrop-filter: blur(4px);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 10000;
+    padding: 20px;
+}
+.modal-backdrop.show { display: flex; }
+@keyframes modalSlideIn {
+    from { opacity: 0; transform: scale(0.95) translateY(-20px); }
+    to { opacity: 1; transform: scale(1) translateY(0); }
+}
+.modal-content {
+    background: #fff;
+    border-radius: 16px;
+    width: 100%;
+    max-width: 420px;
+    max-height: 90vh;
+    overflow-y: auto;
+    animation: modalSlideIn 0.3s ease;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+}
+.modal-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 20px 24px;
+    border-bottom: 1px solid #f0f0f0;
+}
+.modal-header-icon { font-size: 28px; }
+.modal-header h3 {
+    font-size: 18px;
+    font-weight: 700;
+    color: #333;
+    margin: 0;
+    flex: 1;
+}
+.modal-close-btn {
+    background: none;
+    border: none;
+    font-size: 20px;
+    color: #999;
+    cursor: pointer;
+    padding: 4px 8px;
+    border-radius: 8px;
+    transition: all 0.2s;
+}
+.modal-close-btn:hover { background: #f5f5f5; color: #333; }
+.modal-body {
+    padding: 24px;
+}
+.modal-body p {
+    color: #555;
+    font-size: 14px;
+    margin: 0 0 16px 0;
+    line-height: 1.6;
+}
+.modal-detail {
+    background: #f8f9fa;
+    border-radius: 10px;
+    padding: 12px 16px;
+    margin: 12px 0;
+    font-size: 13px;
+    color: #666;
+}
+.modal-detail strong { color: #333; }
+.modal-footer {
+    display: flex;
+    gap: 12px;
+    padding: 20px 24px;
+    border-top: 1px solid #f0f0f0;
+}
+.modal-footer .btn {
+    flex: 1;
+    padding: 12px 20px;
+    border-radius: 12px;
+    border: none;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+.btn-modal-cancel {
+    background: #f5f5f5;
+    color: #666;
+}
+.btn-modal-cancel:hover { background: #e8e8e8; }
+.btn-modalconfirm {
+    background: linear-gradient(135deg, #e74c3c, #c0392b);
+    color: #fff;
+    box-shadow: 0 4px 12px rgba(231,76,60,0.3);
+}
+.btn-modalconfirm:hover { transform: translateY(-1px); }
+.btn-modalconfirm.success {
+    background: linear-gradient(135deg, #00b894, #00cec9);
+    box-shadow: 0 4px 12px rgba(0,184,148,0.3);
+}
+
+/* 结果模态框（成功/失败） */
+.result-icon {
+    font-size: 64px;
+    text-align: center;
+    margin: 16px 0;
+}
+.result-title {
+    text-align: center;
+    font-size: 20px;
+    font-weight: 700;
+    color: #333;
+    margin-bottom: 8px;
+}
+.result-desc {
+    text-align: center;
+    font-size: 14px;
+    color: #666;
+    margin-bottom: 16px;
+}
+.result-details {
+    background: #f8f9fa;
+    border-radius: 10px;
+    padding: 14px 16px;
+    margin: 0 0 20px 0;
+}
+.result-details .row {
+    display: flex;
+    justify-content: space-between;
+    padding: 6px 0;
+    border-bottom: 1px solid #eee;
+    font-size: 13px;
+}
+.result-details .row:last-child { border-bottom: none; }
+.result-details .label { color: #888; }
+.result-details .value { color: #333; font-weight: 600; }
+
+/* 手机端适配 */
+@media (max-width: 768px) {
+    .modal-backdrop { padding: 12px; align-items: flex-end; }
+    .modal-content { max-width: 100%; max-height: 95vh; border-radius: 16px 16px 0 0; }
+    @keyframes modalSlideIn {
+        from { opacity: 0; transform: translateY(100%); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+    .modal-header { padding: 16px 20px; }
+    .modal-body { padding: 20px; }
+    .modal-footer { padding: 16px 20px; }
+    .modal-header h3 { font-size: 16px; }
+}
+
+/* 手机端适配 */
+@media (max-width: 768px) {
+    .backup-stats {
+        grid-template-columns: 1fr 1fr;
+    }
+    /* 备份列表头部隐藏 */
+    .backup-list-header { display: none; }
+    /* 备份项改为卡片式布局 */
+    .backup-item {
+        display: block;
+        padding: 14px 16px;
+        border-bottom: 1px solid #f0f0f0;
+    }
+    .backup-item:last-child { border-bottom: none; }
+    /* 文件名作为卡片标题 */
+    .backup-filename {
+        font-size: 14px;
+        font-weight: 600;
+        color: #333;
+        margin-bottom: 10px;
+        word-break: break-all;
+        display: block;
+    }
+    /* 信息行：改为 flex 横排 */
+    .backup-time,
+    .backup-size {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 4px 0;
+        font-size: 13px;
+    }
+    .backup-time::before {
+        content: '创建时间';
+        font-size: 12px;
+        color: #999;
+    }
+    .backup-size::before {
+        content: '备份大小';
+        font-size: 12px;
+        color: #999;
+    }
+    /* 备份类型标签行 */
+    .backup-item > div:nth-child(4) {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 4px 0;
+    }
+    .backup-item > div:nth-child(4)::before {
+        content: '备份类型';
+        font-size: 12px;
+        color: #999;
+    }
+    .backup-type {
+        display: inline-block;
+    }
+    /* 操作按钮 */
+    .backup-actions-cell {
+        margin-top: 10px;
+        padding-top: 10px;
+        border-top: 1px dashed #eee;
+        display: flex;
+        gap: 8px;
+    }
+    .backup-actions-cell .btn-sm {
+        flex: 1;
+        text-align: center;
+        padding: 8px 10px;
+        font-size: 13px;
+    }
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- 统计卡片 -->
+<div class="backup-stats">
+    <div class="backup-stat-card">
+        <div class="icon">💾</div>
+        <div class="value" id="totalBackups">-</div>
+        <div class="label">备份总数</div>
+    </div>
+    <div class="backup-stat-card">
+        <div class="icon">📦</div>
+        <div class="value" id="totalSize">-</div>
+        <div class="label">总占用空间</div>
+    </div>
+    <div class="backup-stat-card">
+        <div class="icon">🕐</div>
+        <div class="value" id="latestBackup">-</div>
+        <div class="label">最近备份</div>
+    </div>
+</div>
+
+<!-- 操作按钮 -->
+<div class="backup-actions">
+    <button class="btn btn-create" onclick="createBackup()" id="createBtn">
+        💾 立即备份
+    </button>
+    <button class="btn btn-cleanup" onclick="showCleanupModal()">
+        🧹 清理旧备份
+    </button>
+    <button class="btn" style="background:#f5f5f5;color:#666;" onclick="loadBackups()">
+        🔄 刷新列表
+    </button>
+</div>
+
+<!-- 备份列表 -->
+<div class="backup-list">
+    <div class="backup-list-header">
+        <div class="backup-item" style="padding:0;border:none;background:none;font-size:12px;color:#999;">
+            <span>备份文件</span>
+            <span>创建时间</span>
+            <span>大小</span>
+            <span>类型</span>
+            <span>操作</span>
+        </div>
+    </div>
+    <div id="backupListContent">
+        <div class="backup-loading">⏳ 加载中...</div>
+    </div>
+</div>
+
+<!-- 操作确认模态框 -->
+<div class="modal-backdrop" id="confirmModal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <span class="modal-header-icon" id="modalIcon">⚠️</span>
+            <h3 id="modalTitle">确认操作</h3>
+            <button class="modal-close-btn" onclick="hideModal()">✕</button>
+        </div>
+        <div class="modal-body">
+            <p id="modalMessage">确定要执行此操作吗？</p>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-modal-cancel" onclick="hideModal()">取消</button>
+            <button class="btn btn-modalconfirm" id="modalConfirmBtn" onclick="executeAction()">确认</button>
+        </div>
+    </div>
+</div>
+
+<!-- 操作结果模态框 -->
+<div class="modal-backdrop" id="resultModal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <span class="modal-header-icon" id="resultIcon"></span>
+            <h3 id="resultTitle">操作结果</h3>
+            <button class="modal-close-btn" onclick="hideResultModal()">✕</button>
+        </div>
+        <div class="modal-body">
+            <div class="result-icon" id="resultEmoji"></div>
+            <div class="result-title" id="resultMainText"></div>
+            <div class="result-desc" id="resultSubText"></div>
+            <div class="result-details" id="resultDetails"></div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-modalcancel" id="resultBtn" onclick="hideResultModal()">关闭</button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+var currentAction = null;
+var currentFilename = null;
+
+// 页面加载
+document.addEventListener('DOMContentLoaded', loadBackups);
+
+function loadBackups() {
+    document.getElementById('backupListContent').innerHTML = '<div class="backup-loading">⏳ 加载中...</div>';
+    
+    fetch('/api/backup/list', { credentials: 'same-origin' })
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            if (data.success) {
+                renderBackups(data.backups);
+                updateStats(data.backups);
+            } else {
+                document.getElementById('backupListContent').innerHTML = '<div class="backup-empty"><div class="icon">❌</div><p>加载失败</p></div>';
+            }
+        })
+        .catch(function(err) {
+            document.getElementById('backupListContent').innerHTML = '<div class="backup-empty"><div class="icon">❌</div><p>网络错误</p></div>';
+        });
+}
+
+function updateStats(backups) {
+    document.getElementById('totalBackups').textContent = backups.length;
+    
+    var totalBytes = backups.reduce(function(sum, b) { return sum + b.size; }, 0);
+    document.getElementById('totalSize').textContent = formatSize(totalBytes);
+    
+    if (backups.length > 0) {
+        var latest = backups[0].created_at.substring(0, 10);
+        document.getElementById('latestBackup').textContent = latest;
+    } else {
+        document.getElementById('latestBackup').textContent = '无';
+    }
+}
+
+function renderBackups(backups) {
+    var container = document.getElementById('backupListContent');
+    
+    if (!backups || backups.length === 0) {
+        container.innerHTML = '<div class="backup-empty"><div class="icon">📭</div><p>暂无备份</p><p style="font-size:12px;margin-top:8px;">点击「立即备份」创建第一个备份</p></div>';
+        return;
+    }
+    
+    var html = '';
+    backups.forEach(function(b) {
+        var typeClass = 'type-' + b.type;
+        var typeText = b.type === 'manual' ? '手动' : (b.type === 'auto' ? '自动' : '恢复前');
+        
+        html += '<div class="backup-item">' +
+            '<div class="backup-filename">' + b.filename + '</div>' +
+            '<div class="backup-time">' + b.created_at + '</div>' +
+            '<div class="backup-size">' + b.size_display + '</div>' +
+            '<div><span class="backup-type ' + typeClass + '">' + typeText + '</span></div>' +
+            '<div class="backup-actions-cell">' +
+                '<button class="btn-sm btn-restore" onclick="showRestoreConfirm(\'' + b.filename + '\')">恢复</button>' +
+                '<button class="btn-sm btn-download" onclick="downloadBackup(\'' + b.filename + '\')">下载</button>' +
+                '<button class="btn-sm btn-delete" onclick="showDeleteConfirm(\'' + b.filename + '\')">删除</button>' +
+            '</div>' +
+        '</div>';
+    });
+    
+    container.innerHTML = html;
+}
+
+function createBackup() {
+    var btn = document.getElementById('createBtn');
+    btn.disabled = true;
+    btn.innerHTML = '⏳ 备份中...';
+    
+    fetch('/api/backup/create', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        credentials: 'same-origin'
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+        btn.disabled = false;
+        btn.innerHTML = '💾 立即备份';
+        
+        if (data.success) {
+            var details = [
+                { label: '备份文件', value: data.filename },
+                { label: '备份大小', value: data.size_display },
+                { label: '备份类型', value: '手动备份' }
+            ];
+            if (data.auto_cleaned > 0) {
+                details.push({ label: '自动清理', value: data.auto_cleaned + ' 个旧备份已删除' });
+            }
+            showResultModal(true, '备份成功', '数据备份已创建。', details);
+            loadBackups();
+        } else {
+            showResultModal(false, '备份失败', data.error, [
+                { label: '操作', value: '创建备份' }
+            ]);
+        }
+    })
+    .catch(function(err) {
+        btn.disabled = false;
+        btn.innerHTML = '💾 立即备份';
+        showResultModal(false, '网络错误', err.message || '无法连接到服务器', []);
+    });
+}
+
+function downloadBackup(filename) {
+    window.open('/api/backup/download?filename=' + encodeURIComponent(filename), '_blank');
+}
+
+function showRestoreConfirm(filename) {
+    currentAction = 'restore';
+    currentFilename = filename;
+    document.getElementById('modalTitle').textContent = '⚠️ 确认恢复';
+    document.getElementById('modalMessage').textContent = '恢复备份将覆盖当前所有数据！恢复前会自动备份当前状态。确定要恢复「' + filename + '」吗？';
+    document.getElementById('confirmModal').classList.add('show');
+}
+
+function showDeleteConfirm(filename) {
+    currentAction = 'delete';
+    currentFilename = filename;
+    document.getElementById('modalTitle').textContent = '🗑️ 确认删除';
+    document.getElementById('modalMessage').textContent = '确定要删除备份「' + filename + '」吗？此操作不可恢复。';
+    document.getElementById('confirmModal').classList.add('show');
+}
+
+function showCleanupModal() {
+    currentAction = 'cleanup';
+    currentFilename = null;
+    document.getElementById('modalTitle').textContent = '🧹 清理旧备份';
+    document.getElementById('modalMessage').textContent = '将保留最近 10 个备份，删除更早的备份。确定要清理吗？';
+    document.getElementById('confirmModal').classList.add('show');
+}
+
+function hideModal() {
+    document.getElementById('confirmModal').classList.remove('show');
+    currentAction = null;
+    currentFilename = null;
+}
+
+function executeAction() {
+    var action = currentAction;  // 先保存，防止 hideModal 清空
+    var filename = currentFilename;
+    hideModal();
+    
+    if (action === 'restore') {
+        currentFilename = filename;
+        executeRestore();
+    } else if (action === 'delete') {
+        currentFilename = filename;
+        executeDelete();
+    } else if (action === 'cleanup') {
+        executeCleanup();
+    }
+}
+
+/**
+ * 显示操作结果模态框
+ */
+function showResultModal(isSuccess, title, message, details) {
+    document.getElementById('resultIcon').textContent = isSuccess ? '✅' : '❌';
+    document.getElementById('resultTitle').textContent = title;
+    document.getElementById('resultEmoji').textContent = isSuccess ? '🎉' : '⚠️';
+    document.getElementById('resultMainText').textContent = title;
+    document.getElementById('resultSubText').textContent = message;
+    
+    // 构建详情列表
+    var detailsHtml = '';
+    if (details) {
+        details.forEach(function(d) {
+            detailsHtml += '<div class="row"><span class="label">' + d.label + '</span><span class="value">' + d.value + '</span></div>';
+        });
+    }
+    document.getElementById('resultDetails').innerHTML = detailsHtml;
+    
+    // 按钮样式
+    var btn = document.getElementById('resultBtn');
+    if (isSuccess) {
+        btn.className = 'btn btn-modalcancel success';
+        btn.textContent = '知道了';
+    } else {
+        btn.className = 'btn btn-modal-cancel';
+        btn.textContent = '关闭';
+    }
+    
+    document.getElementById('resultModal').classList.add('show');
+}
+
+/**
+ * 关闭结果模态框
+ */
+function hideResultModal() {
+    document.getElementById('resultModal').classList.remove('show');
+}
+
+// 点击模态框外部关闭
+document.addEventListener('click', function(e) {
+    var confirmModal = document.getElementById('confirmModal');
+    var resultModal = document.getElementById('resultModal');
+    if (e.target === confirmModal) hideModal();
+    if (e.target === resultModal) hideResultModal();
+});
+
+function executeRestore() {
+    fetch('/api/backup/restore', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        credentials: 'same-origin',
+        body: JSON.stringify({ filename: currentFilename })
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+        if (data.success) {
+            showResultModal(true, '恢复成功', '数据已从备份中恢复，页面即将刷新。', [
+                { label: '备份文件', value: currentFilename },
+                { label: '恢复前备份', value: data.pre_backup || '已自动创建' }
+            ]);
+            setTimeout(function() { location.reload(); }, 2000);
+        } else {
+            showResultModal(false, '恢复失败', data.error, [
+                { label: '操作', value: '恢复备份' }
+            ]);
+        }
+    })
+    .catch(function(err) {
+        showResultModal(false, '网络错误', err.message || '无法连接到服务器', []);
+    });
+}
+
+function executeDelete() {
+    fetch('/api/backup/delete', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        credentials: 'same-origin',
+        body: JSON.stringify({ filename: currentFilename })
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+        if (data.success) {
+            showResultModal(true, '删除成功', '备份文件已删除。', [
+                { label: '删除文件', value: currentFilename }
+            ]);
+            loadBackups();
+        } else {
+            showResultModal(false, '删除失败', data.error, [
+                { label: '操作', value: '删除备份' }
+            ]);
+        }
+    })
+    .catch(function(err) {
+        showResultModal(false, '网络错误', err.message || '无法连接到服务器', []);
+    });
+}
+
+function executeCleanup() {
+    fetch('/api/backup/cleanup', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        credentials: 'same-origin',
+        body: JSON.stringify({ keep_count: 10 })
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+        if (data.success) {
+            var details = [
+                { label: '保留策略', value: '最近 10 个备份' }
+            ];
+            if (data.deleted > 0) {
+                showResultModal(true, '清理完成', '已删除 ' + data.deleted + ' 个旧备份。', [
+                    { label: '删除数量', value: data.deleted + ' 个' },
+                    { label: '保留数量', value: '最近 10 个' }
+                ]);
+            } else {
+                showResultModal(true, '无需清理', '备份数量未超过限制，无需清理。', details);
+            }
+            loadBackups();
+        } else {
+            showResultModal(false, '清理失败', data.error, []);
+        }
+    })
+    .catch(function(err) {
+        showResultModal(false, '网络错误', err.message || '无法连接到服务器', []);
+    });
+}
+
+function formatSize(bytes) {
+    if (bytes < 1024) return bytes + ' B';
+    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+    return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+}
+
+
+</script>
+{% endblock %}

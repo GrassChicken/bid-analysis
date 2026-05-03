@@ -9,6 +9,7 @@
     <button class="btn btn-secondary" onclick="window.location.href='/user-center'">👤 个人中心</button>
     {% if is_admin %}<button class="btn btn-secondary" onclick="window.location.href='/operation-logs'">📋 操作日志</button>{% endif %}
     {% if is_admin %}<button class="btn btn-primary" onclick="window.location.href='/admin/users'">👥 用户管理</button>{% endif %}
+    {% if is_admin %}<button class="btn" style="background: linear-gradient(135deg, #00b894, #00cec9); color: #fff;" onclick="window.location.href='/admin/backup'">💾 数据备份</button>{% endif %}
     <button class="btn btn-danger" onclick="showLogoutModal()">🚪 退出登录</button>
 {% endblock %}
 
