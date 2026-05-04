@@ -34,6 +34,7 @@ class User:
                 email TEXT,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 is_admin INTEGER DEFAULT 0,
+                is_active INTEGER DEFAULT 1,
                 last_login TIMESTAMP
             )
         ''')
@@ -42,6 +43,12 @@ class User:
         cursor.execute('CREATE INDEX IF NOT EXISTS idx_users_username ON users(username)')
         cursor.execute('CREATE INDEX IF NOT EXISTS idx_users_phone ON users(phone)')
         cursor.execute('CREATE INDEX IF NOT EXISTS idx_users_email ON users(email)')
+        
+        # 数据库迁移：为旧表添加 is_active 字段（如果不存在）
+        try:
+            cursor.execute('ALTER TABLE users ADD COLUMN is_active INTEGER DEFAULT 1')
+        except sqlite3.OperationalError:
+            pass  # 字段已存在，跳过
         
         # 创建默认管理员账户
         admin_password_hash = generate_password_hash('admin123')
