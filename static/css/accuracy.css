@@ -1011,6 +1011,91 @@
     .match-result-box__title { font-size: 1.1em; }
 }
 
+/* ========== 折线图控制面板样式 ========== */
+.trend-panel__controls {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+    margin-left: auto;
+}
+
+.control-group {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.control-group label {
+    font-size: 14px;
+    color: #2c3e50;
+    font-weight: 500;
+    white-space: nowrap;
+}
+
+.control-select {
+    padding: 6px 12px;
+    border: 1px solid #dcdfe6;
+    border-radius: 6px;
+    font-size: 14px;
+    color: #2c3e50;
+    background: white;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    min-width: 100px;
+}
+
+.control-select:hover {
+    border-color: #3498db;
+}
+
+.control-select:focus {
+    outline: none;
+    border-color: #3498db;
+    box-shadow: 0 0 0 2px rgba(52, 152, 219, 0.1);
+}
+
+.control-checkbox {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    cursor: pointer;
+    padding: 4px 8px;
+    border-radius: 6px;
+    transition: background 0.2s ease;
+}
+
+.control-checkbox:hover {
+    background: rgba(0, 0, 0, 0.05);
+}
+
+.control-checkbox input[type="checkbox"] {
+    width: 16px;
+    height: 16px;
+    cursor: pointer;
+}
+
+.control-checkbox span {
+    font-size: 14px;
+    color: #2c3e50;
+    user-select: none;
+}
+
+@media (max-width: 768px) {
+    .trend-panel__header {
+        flex-wrap: wrap;
+    }
+    .trend-panel__controls {
+        width: 100%;
+        margin-left: 0;
+        flex-direction: column;
+        gap: 8px;
+    }
+    .control-group {
+        width: 100%;
+        justify-content: space-between;
+    }
+}
+
 @media (max-width: 480px) {
     .hero-banner { padding: 18px 16px; }
     .hero-icon { font-size: 30px; }

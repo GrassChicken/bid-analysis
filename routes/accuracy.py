@@ -395,6 +395,86 @@ def api_accuracy_trend():
     })
 
 
+@accuracy_bp.route('/api/accuracy/timeline')
+@login_required
+def api_accuracy_timeline():
+    """获取预测值与真实值的时间序列对比数据"""
+    user_id = session.get('user_id')
+    conn = prediction_model.db_path
+    import sqlite3
+
+    db = sqlite3.connect(conn)
+    cursor = db.cursor()
+
+    # 检查字段是否存在
+    cursor.execute('PRAGMA table_info(prediction_records)')
+    columns = [row[1] for row in cursor.fetchall()]
+    has_k1_actual = 'k1_actual' in columns
+    has_q1_actual = 'q1_actual' in columns
+    has_method_actual = 'method_actual' in columns
+
+    # 查询所有已录入真实值的记录，按预测时间排序
+    cursor.execute('''
+        SELECT id, project_name, prediction_time,
+               method_prediction, method_actual,
+               k1_prediction, k1_actual,
+               q1_prediction, q1_actual
+        FROM prediction_records
+        WHERE user_id = ? AND accuracy_checked = 1
+        ORDER BY prediction_time ASC
+    ''', (user_id,))
+
+    records = []
+    for row in cursor.fetchall():
+        rid, project_name, pred_time, method_pred, method_act, k1_pred, k1_act, q1_pred, q1_act = row
+        item = {
+            'id': rid,
+            'project_name': project_name or '',
+            'time': str(pred_time)[:16] if pred_time else '',
+        }
+
+        # 方法类别（转为数值：方法1=1, 方法2=2）
+        if method_pred and method_act:
+            item['method_pred'] = int(method_pred)
+            item['method_act'] = int(method_act)
+        else:
+            item['method_pred'] = None
+            item['method_act'] = None
+
+        # K1
+        if k1_pred is not None and k1_act is not None:
+            try:
+                item['k1_pred'] = round(float(k1_pred), 4)
+                item['k1_act'] = round(float(k1_act), 4)
+            except (ValueError, TypeError):
+                item['k1_pred'] = None
+                item['k1_act'] = None
+        else:
+            item['k1_pred'] = None
+            item['k1_act'] = None
+
+        # Q1
+        if q1_pred is not None and q1_act is not None:
+            try:
+                item['q1_pred'] = round(float(q1_pred), 4)
+                item['q1_act'] = round(float(q1_act), 4)
+            except (ValueError, TypeError):
+                item['q1_pred'] = None
+                item['q1_act'] = None
+        else:
+            item['q1_pred'] = None
+            item['q1_act'] = None
+
+        records.append(item)
+
+    db.close()
+
+    return jsonify({
+        'success': True,
+        'timeline': records
+    })
+
+
 @accuracy_bp.route('/api/accuracy/export')
 @login_required
 def api_export_accuracy():

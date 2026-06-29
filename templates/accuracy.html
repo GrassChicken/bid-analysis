@@ -110,6 +110,50 @@
     </div>
 </div>
 
+<!-- 预测值与真实值对比折线图 -->
+<div class="trend-panel" id="comparePanel">
+    <div class="trend-panel__header">
+        <div class="trend-panel__icon">📊</div>
+        <div>
+            <h3>预测值与真实值对比</h3>
+            <p class="trend-panel__desc">按时间顺序展示预测值与真实值的对比</p>
+        </div>
+        <div class="trend-panel__controls">
+            <div class="control-group">
+                <label>时间范围：</label>
+                <select id="timeRange" onchange="updateCompareChart()" class="control-select">
+                    <option value="all">全部</option>
+                    <option value="30">近30天</option>
+                    <option value="90">近3个月</option>
+                    <option value="180">近6个月</option>
+                    <option value="365">近1年</option>
+                </select>
+            </div>
+            <div class="control-group">
+                <label class="control-checkbox">
+                    <input type="checkbox" id="chkMethod" checked onchange="updateCompareChart()">
+                    <span>方法类别</span>
+                </label>
+                <label class="control-checkbox">
+                    <input type="checkbox" id="chkK1" checked onchange="updateCompareChart()">
+                    <span>K1</span>
+                </label>
+                <label class="control-checkbox">
+                    <input type="checkbox" id="chkQ1" checked onchange="updateCompareChart()">
+                    <span>Q1</span>
+                </label>
+            </div>
+        </div>
+    </div>
+    <div class="trend-panel__body">
+        <canvas id="compareChart" height="300"></canvas>
+        <div class="trend-empty" id="compareEmpty" style="display:none;">
+            <div class="trend-empty__icon">📊</div>
+            <p>暂无对比数据，请先录入真实值</p>
+        </div>
+    </div>
+</div>
+
 <!-- 筛选面板 -->
 <div class="filter-panel">
     <div class="filter-row">
@@ -227,6 +271,7 @@
         document.addEventListener('DOMContentLoaded', function() {
             loadStats();
             loadTrend();
+            loadCompareData();
             loadRecords(currentPage);
         });
 
@@ -364,6 +409,261 @@
                             }
                         }
                     }
+                }
+            });
+        }
+
+        // 加载预测值与真实值对比折线图
+        var compareChart = null;
+        var compareData = null;
+
+        function loadCompareData() {
+            fetch('/api/accuracy/timeline')
+                .then(function(r) { return r.json(); })
+                .then(function(data) {
+                    if (data.success) {
+                        compareData = data.timeline;
+                        updateCompareChart();
+                    }
+                });
+        }
+
+        function updateCompareChart() {
+            var showMethod = document.getElementById('chkMethod').checked;
+            var showK1 = document.getElementById('chkK1').checked;
+            var showQ1 = document.getElementById('chkQ1').checked;
+            var timeRange = document.getElementById('timeRange').value;
+
+            if (!compareData || compareData.length === 0) {
+                document.getElementById('compareEmpty').style.display = 'block';
+                if (compareChart) {
+                    compareChart.destroy();
+                }
+                return;
+            }
+
+            // Filter data by time range
+            var filteredData = compareData;
+            if (timeRange !== 'all') {
+                var days = parseInt(timeRange);
+                var now = new Date();
+                var cutoff = new Date(now.getTime() - days * 24 * 60 * 60 * 1000);
+                filteredData = compareData.filter(function(d) {
+                    if (!d.time) return true;
+                    var itemDate = new Date(d.time.replace(' ', 'T'));
+                    return itemDate >= cutoff;
+                });
+            }
+
+            if (filteredData.length === 0) {
+                document.getElementById('compareEmpty').style.display = 'block';
+                if (compareChart) {
+                    compareChart.destroy();
+                }
+                return;
+            }
+
+            document.getElementById('compareEmpty').style.display = 'none';
+
+            var datasets = [];
+
+            if (showMethod) {
+                datasets.push({
+                    label: '方法类别（预测）',
+                    data: filteredData.map(function(d) { return d.method_pred; }),
+                    borderColor: '#3498db',
+                    backgroundColor: 'rgba(52, 152, 219, 0.1)',
+                    borderWidth: 2,
+                    tension: 0.1,
+                    pointRadius: 4,
+                    pointHoverRadius: 6,
+                    yAxisID: 'y-method'
+                });
+                datasets.push({
+                    label: '方法类别（真实）',
+                    data: filteredData.map(function(d) { return d.method_act; }),
+                    borderColor: '#3498db',
+                    backgroundColor: 'rgba(52, 152, 219, 0.2)',
+                    borderWidth: 3,
+                    borderDash: [5, 5],
+                    tension: 0.1,
+                    pointRadius: 4,
+                    pointHoverRadius: 6,
+                    yAxisID: 'y-method'
+                });
+            }
+
+            if (showK1) {
+                datasets.push({
+                    label: 'K1（预测）',
+                    data: filteredData.map(function(d) { return d.k1_pred; }),
+                    borderColor: '#2ecc71',
+                    backgroundColor: 'rgba(46, 204, 113, 0.1)',
+                    borderWidth: 2,
+                    tension: 0.1,
+                    pointRadius: 4,
+                    pointHoverRadius: 6,
+                    yAxisID: 'y-k1'
+                });
+                datasets.push({
+                    label: 'K1（真实）',
+                    data: filteredData.map(function(d) { return d.k1_act; }),
+                    borderColor: '#27ae60',
+                    backgroundColor: 'rgba(39, 174, 96, 0.2)',
+                    borderWidth: 3,
+                    borderDash: [5, 5],
+                    tension: 0.1,
+                    pointRadius: 4,
+                    pointHoverRadius: 6,
+                    yAxisID: 'y-k1'
+                });
+            }
+
+            if (showQ1) {
+                datasets.push({
+                    label: 'Q1（预测）',
+                    data: filteredData.map(function(d) { return d.q1_pred; }),
+                    borderColor: '#e74c3c',
+                    backgroundColor: 'rgba(231, 76, 60, 0.1)',
+                    borderWidth: 2,
+                    tension: 0.1,
+                    pointRadius: 4,
+                    pointHoverRadius: 6,
+                    yAxisID: 'y-q1'
+                });
+                datasets.push({
+                    label: 'Q1（真实）',
+                    data: filteredData.map(function(d) { return d.q1_act; }),
+                    borderColor: '#c0392b',
+                    backgroundColor: 'rgba(192, 57, 43, 0.2)',
+                    borderWidth: 3,
+                    borderDash: [5, 5],
+                    tension: 0.1,
+                    pointRadius: 4,
+                    pointHoverRadius: 6,
+                    yAxisID: 'y-q1'
+                });
+            }
+
+            if (datasets.length === 0) {
+                if (compareChart) {
+                    compareChart.destroy();
+                }
+                return;
+            }
+
+            var scales = {};
+            if (showMethod) {
+                scales['y-method'] = {
+                    type: 'linear',
+                    position: 'left',
+                    min: 0,
+                    max: 3,
+                    ticks: {
+                        stepSize: 1,
+                        callback: function(value) {
+                            return value === 0 ? '' : '方法' + value;
+                        }
+                    },
+                    title: {
+                        display: true,
+                        text: '方法类别',
+                        color: '#3498db'
+                    },
+                    grid: {
+                        color: 'rgba(52, 152, 219, 0.1)'
+                    }
+                };
+            }
+            if (showK1) {
+                scales['y-k1'] = {
+                    type: 'linear',
+                    position: 'right',
+                    min: 0.945,
+                    max: 0.985,
+                    ticks: {
+                        stepSize: 0.005,
+                        callback: function(value) {
+                            return value.toFixed(3);
+                        }
+                    },
+                    title: {
+                        display: true,
+                        text: 'K1 值',
+                        color: '#2ecc71'
+                    },
+                    grid: {
+                        color: 'rgba(46, 204, 113, 0.1)'
+                    }
+                };
+            }
+            if (showQ1) {
+                scales['y-q1'] = {
+                    type: 'linear',
+                    position: showK1 ? 'right' : 'right',
+                    min: 0.60,
+                    max: 0.90,
+                    ticks: {
+                        stepSize: 0.05,
+                        callback: function(value) {
+                            return value.toFixed(2);
+                        }
+                    },
+                    title: {
+                        display: true,
+                        text: 'Q1 值',
+                        color: '#e74c3c'
+                    },
+                    grid: {
+                        color: 'rgba(231, 76, 60, 0.1)',
+                        drawOnChartArea: !showK1
+                    }
+                };
+            }
+
+            if (compareChart) {
+                compareChart.destroy();
+            }
+
+            var ctx = document.getElementById('compareChart').getContext('2d');
+            compareChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: filteredData.map(function(d) { return d.time; }),
+                    datasets: datasets
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: {
+                        mode: 'index',
+                        intersect: false
+                    },
+                    plugins: {
+                        legend: {
+                            display: true,
+                            position: 'top',
+                            labels: {
+                                usePointStyle: true,
+                                padding: 15,
+                                font: { size: 12 }
+                            }
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    var label = context.dataset.label || '';
+                                    var value = context.parsed.y;
+                                    if (value === null) return label + ': 无数据';
+                                    if (label.indexOf('方法') !== -1) {
+                                        return label + ': 方法' + value;
+                                    }
+                                    return label + ': ' + value.toFixed(4);
+                                }
+                            }
+                        }
+                    },
+                    scales: scales
                 }
             });
         }
