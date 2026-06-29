@@ -434,6 +434,196 @@ class BidParameterAnalyzer:
             'reasoning': f'综合频率最高值，近期权重 70%'
         }
     
+    # ==================== 5 种新增方法（推荐算法）====================
+    
+    def analyze_holt_linear(self, values: np.ndarray, alpha: float = 0.3, beta: float = 0.1) -> Optional[Dict]:
+        """21. Holt 双参数指数平滑
+        分别平滑水平和趋势分量，适合有明显趋势的数据"""
+        if len(values) < 5:
+            return None
+        # 初始化
+        level = values[0]
+        trend = values[1] - values[0]
+        # 递推计算
+        for t in range(1, len(values)):
+            new_level = alpha * values[t] + (1 - alpha) * (level + trend)
+            new_trend = beta * (new_level - level) + (1 - beta) * trend
+            level, trend = new_level, new_trend
+        # 预测下一步
+        next_val = level + trend
+        # 计算拟合度
+        fitted = [values[0]]
+        l, tr = values[0], values[1] - values[0]
+        for t in range(1, len(values)):
+            fitted.append(l + tr)
+            new_l = alpha * values[t] + (1 - alpha) * (l + tr)
+            new_tr = beta * (new_l - l) + (1 - beta) * tr
+            l, tr = new_l, new_tr
+        ss_res = np.sum((values[1:] - fitted[1:]) ** 2)
+        ss_tot = np.sum((values[1:] - np.mean(values[1:])) ** 2)
+        r_squared = 1 - ss_res / ss_tot if ss_tot > 0 else 0
+        if r_squared > 0.5:
+            return {
+                'method': 'Holt双参数平滑',
+                'prediction': float(next_val),
+                'confidence': round(min(0.85, 0.6 + r_squared * 0.25), 3),
+                'reasoning': f'Holt线性趋势 (α={alpha}, β={beta}, R²={r_squared:.3f})'
+            }
+        return None
+    
+    def analyze_knn_regression(self, values: np.ndarray, k: int = 3) -> Optional[Dict]:
+        """22. K-近邻回归
+        找出历史中与最近n个值最相似的子序列，取后续值的加权平均"""
+        if len(values) < k + 3:
+            return None
+        n = 3  # 模式长度
+        current_pattern = values[-n:]
+        # 计算所有历史子序列与当前模式的距离
+        distances = []
+        for i in range(len(values) - n - 1):
+            pattern = values[i:i+n]
+            dist = np.sqrt(np.sum((pattern - current_pattern) ** 2))
+            next_val = values[i + n]
+            distances.append((dist, next_val))
+        # 取最近的K个
+        distances.sort(key=lambda x: x[0])
+        neighbors = distances[:k]
+        if not neighbors:
+            return None
+        # 加权平均（距离越近权重越大）
+        total_weight = 0
+        weighted_sum = 0
+        for dist, val in neighbors:
+            weight = 1.0 / (dist + 0.001)  # 避免除零
+            total_weight += weight
+            weighted_sum += weight * val
+        next_val = weighted_sum / total_weight if total_weight > 0 else next_val
+        avg_dist = np.mean([d[0] for d in neighbors])
+        confidence = max(0.5, 0.9 - avg_dist * 10)  # 距离越小置信度越高
+        return {
+            'method': f'K近邻回归(K={k})',
+            'prediction': float(next_val),
+            'confidence': round(min(0.80, confidence), 3),
+            'reasoning': f'找到{k}个相似模式，加权平均预测'
+        }
+    
+    def analyze_grey_prediction(self, values: np.ndarray) -> Optional[Dict]:
+        """23. 灰色预测 GM(1,1)
+        小样本预测模型，对原始序列累加后建立微分方程"""
+        if len(values) < 4:
+            return None
+        n = len(values)
+        x0 = values.copy()
+        # 1-AGO 累加生成
+        x1 = np.cumsum(x0)
+        # 构建背景值
+        z1 = 0.5 * (x1[:-1] + x1[1:])
+        # 构建矩阵方程 Y = B * [a, b]^T
+        Y = x0[1:]
+        B = np.vstack([-z1, np.ones(n - 1)]).T
+        # 最小二乘求解
+        try:
+            params = np.linalg.lstsq(B, Y, rcond=None)[0]
+            a, b = params[0], params[1]
+            if abs(a) < 0.0001:  # a接近0说明模型无意义
+                return None
+            # 预测公式
+            def predict_x1(k):
+                return (x0[0] - b / a) * np.exp(-a * k) + b / a
+            # 还原预测值
+            next_x1 = predict_x1(n)
+            prev_x1 = predict_x1(n - 1)
+            next_val = next_x1 - prev_x1
+            # 计算后验差比值（越小越好）
+            fitted_x1 = [predict_x1(i) for i in range(n)]
+            fitted_x0 = [fitted_x1[0]] + [fitted_x1[i] - fitted_x1[i-1] for i in range(1, n)]
+            residuals = np.abs(x0 - fitted_x0)
+            mean_residual = np.mean(residuals)
+            mean_x0 = np.mean(x0)
+            relative_error = mean_residual / mean_x0 if mean_x0 > 0 else 1
+            confidence = max(0.5, 0.9 - relative_error)
+            return {
+                'method': '灰色预测GM(1,1)',
+                'prediction': float(next_val),
+                'confidence': round(min(0.85, confidence), 3),
+                'reasoning': f'灰色预测模型 (a={a:.4f}, b={b:.4f}, 相对误差={relative_error:.3f})'
+            }
+        except Exception:
+            return None
+    
+    def analyze_adaptive_median(self, values: np.ndarray, window: int = 5) -> Optional[Dict]:
+        """24. 自适应加权中位数
+        取最近N个值的加权中位数，对异常值鲁棒"""
+        if len(values) < window:
+            window = len(values)
+        if window < 3:
+            return None
+        recent = values[-window:]
+        # 权重：越近权重越大（线性递增）
+        weights = np.arange(1, window + 1, dtype=float)
+        weights = weights / weights.sum()  # 归一化
+        # 加权中位数：找到使累积权重达到50%的值
+        sorted_indices = np.argsort(recent)
+        sorted_values = recent[sorted_indices]
+        sorted_weights = weights[sorted_indices]
+        cum_weights = np.cumsum(sorted_weights)
+        median_idx = np.searchsorted(cum_weights, 0.5)
+        median_idx = min(median_idx, len(sorted_values) - 1)
+        weighted_median = sorted_values[median_idx]
+        # 结合近期趋势
+        trend = values[-1] - values[-2] if len(values) >= 2 else 0
+        next_val = weighted_median + trend * 0.2
+        # 计算离散程度
+        mad = np.median(np.abs(recent - np.median(recent)))
+        std = np.std(recent)
+        stability = 1.0 / (1.0 + std) if std > 0 else 1.0
+        confidence = max(0.5, 0.7 * stability)
+        return {
+            'method': '自适应加权中位数',
+            'prediction': float(next_val),
+            'confidence': round(min(0.75, confidence), 3),
+            'reasoning': f'窗口={window}的加权中位数，对异常值鲁棒'
+        }
+    
+    def analyze_arima_simple(self, values: np.ndarray, order: int = 1) -> Optional[Dict]:
+        """25. 差分自回归（ARIMA简化版）
+        先差分使序列平稳，再用AR(1)模型预测"""
+        if len(values) < 10:
+            return None
+        # 差分
+        diff_values = np.diff(values, n=order)
+        if len(diff_values) < 5:
+            return None
+        # AR(1) 模型：Y(t) = phi * Y(t-1) + epsilon
+        y = diff_values[1:]
+        x = diff_values[:-1]
+        # 最小二乘求解 phi
+        try:
+            phi = np.sum(x * y) / np.sum(x * x) if np.sum(x * x) > 0 else 0
+            if abs(phi) > 0.99:  # phi接近1说明单位根，模型不稳定
+                return None
+            # 预测差分值的下一步
+            last_diff = diff_values[-1]
+            next_diff = phi * last_diff
+            # 还原为原序列预测值
+            next_val = values[-1] + next_diff
+            # 计算拟合度
+            fitted_diff = phi * x
+            ss_res = np.sum((y - fitted_diff) ** 2)
+            ss_tot = np.sum((y - np.mean(y)) ** 2)
+            r_squared = 1 - ss_res / ss_tot if ss_tot > 0 else 0
+            if r_squared > 0.3:  # AR模型要求一定解释力
+                confidence = 0.5 + r_squared * 0.3
+                return {
+                    'method': f'差分自回归AR({order})',
+                    'prediction': float(next_val),
+                    'confidence': round(min(0.80, confidence), 3),
+                    'reasoning': f'{order}阶差分后AR(1)模型 (φ={phi:.3f}, R²={r_squared:.3f})'
+                }
+        except Exception:
+            pass
+        return None
+    
     # ==================== 综合分析 ====================
     
     def analyze_all_methods(self, values: np.ndarray, param_name: str,
@@ -483,6 +673,27 @@ class BidParameterAnalyzer:
         if standard_set:
             result = self.analyze_frequency_heatmap(values, standard_set)
             if result: results.append(result)
+        
+        # 21-25: 推荐新增方法
+        # 21. Holt 双参数平滑
+        result = self.analyze_holt_linear(values)
+        if result: results.append(result)
+        
+        # 22. K近邻回归
+        result = self.analyze_knn_regression(values)
+        if result: results.append(result)
+        
+        # 23. 灰色预测 GM(1,1)
+        result = self.analyze_grey_prediction(values)
+        if result: results.append(result)
+        
+        # 24. 自适应加权中位数
+        result = self.analyze_adaptive_median(values)
+        if result: results.append(result)
+        
+        # 25. 差分自回归
+        result = self.analyze_arima_simple(values)
+        if result: results.append(result)
         
         # 按置信度排序
         results.sort(key=lambda x: x['confidence'], reverse=True)
