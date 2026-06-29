@@ -79,6 +79,10 @@ def api_predict():
             if not date_to:
                 date_to = max(bid_dates)
 
+    # 【修复】按开标日期正序排序，确保时间序列分析正确
+    # 原始数据按 import_time DESC 排序，但预测算法需要按时间正序
+    records = sorted(records, key=lambda r: r[3] or '')
+
     # 提取数据（records 是元组列表）
     # 列顺序: id(0), user_id(1), project_name(2), bid_date(3), bid_time(4),
     #         bid_location(5), method_category(6), k2_value(7), k1_value(8), q1_value(9), import_time(10)
@@ -258,6 +262,9 @@ def api_predict_update(record_id):
                 date_from = min(bid_dates)
             if not date_to:
                 date_to = max(bid_dates)
+
+    # 【修复】按开标日期正序排序，确保时间序列分析正确
+    records = sorted(records, key=lambda r: r[3] or '')
 
     method_values = [r[6] for r in records if r[6]]
     k2_values = [float(r[7]) for r in records if r[7] and str(r[7]).replace('.', '').isdigit()]
