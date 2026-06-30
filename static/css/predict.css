@@ -223,7 +223,7 @@
 }
 .form-input, .form-select {
     width: 100%;
-    padding: 14px 18px;
+    padding: 14px 0px;
     border: 2px solid #e8ecf1;
     border-radius: 13px;
     font-size: 16px;
