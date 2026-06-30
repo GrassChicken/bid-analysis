@@ -48,21 +48,25 @@ def api_predict():
     project_name = data.get('project_name', '').strip()
     location = data.get('location')
     method_category = data.get('method_category')
-    date_from = data.get('date_from')
-    date_to = data.get('date_to')
+    datetime_from = data.get('datetime_from')
+    datetime_to = data.get('datetime_to')
 
     if not project_name:
         return jsonify({'success': False, 'error': '请输入项目名称'})
 
     # 从数据库获取用户的数据
+    filters = {
+        'location': location,
+        'method': method_category
+    }
+    if datetime_from:
+        filters['datetime_from'] = datetime_from
+    if datetime_to:
+        filters['datetime_to'] = datetime_to
+    
     records, _ = bid_record_model.get_records(
         user_id,
-        filters={
-            'location': location,
-            'method': method_category,
-            'date_from': date_from,
-            'date_to': date_to
-        },
+        filters=filters,
         limit=10000,
         offset=0
     )
@@ -70,18 +74,9 @@ def api_predict():
     if not records:
         return jsonify({'success': False, 'error': '没有足够的数据进行预测'})
 
-    # 自动填充日期范围：如果用户没有设置开始/结束日期，则从过滤结果中取最早和最晚的开标日期
-    if not date_from or not date_to:
-        bid_dates = [r[3] for r in records if r[3]]
-        if bid_dates:
-            if not date_from:
-                date_from = min(bid_dates)
-            if not date_to:
-                date_to = max(bid_dates)
-
-    # 【修复】按开标日期正序排序，确保时间序列分析正确
+    # 【修复】按开标日期+开标时间升序排序，确保时间序列分析正确
     # 原始数据按 import_time DESC 排序，但预测算法需要按时间正序
-    records = sorted(records, key=lambda r: r[3] or '')
+    records = sorted(records, key=lambda r: (r[3] or '', r[4] or ''))
 
     # 提取数据（records 是元组列表）
     # 列顺序: id(0), user_id(1), project_name(2), bid_date(3), bid_time(4),
@@ -141,8 +136,8 @@ def api_predict():
             'project_name': project_name,
             'location_filter': location,
             'method_filter': method_category,
-            'date_from': date_from,
-            'date_to': date_to,
+            'date_from': datetime_from,
+            'date_to': datetime_to,
             'data_count': len(records),
             'method_prediction': result.get('method_prediction', {}).get('prediction'),
             'method_confidence': result.get('method_prediction', {}).get('confidence'),
@@ -227,8 +222,8 @@ def api_predict_update(record_id):
     project_name = data.get('project_name', '').strip()
     location = data.get('location')
     method_category = data.get('method_category')
-    date_from = data.get('date_from')
-    date_to = data.get('date_to')
+    datetime_from = data.get('datetime_from')
+    datetime_to = data.get('datetime_to')
 
     if not project_name:
         return jsonify({'success': False, 'error': '请输入项目名称'})
@@ -239,14 +234,18 @@ def api_predict_update(record_id):
         return jsonify({'success': False, 'error': '预测记录不存在或无权操作'})
 
     # 从数据库获取用户的数据
+    filters = {
+        'location': location,
+        'method': method_category
+    }
+    if datetime_from:
+        filters['datetime_from'] = datetime_from
+    if datetime_to:
+        filters['datetime_to'] = datetime_to
+    
     records, _ = bid_record_model.get_records(
         user_id,
-        filters={
-            'location': location,
-            'method': method_category,
-            'date_from': date_from,
-            'date_to': date_to
-        },
+        filters=filters,
         limit=10000,
         offset=0
     )
@@ -254,17 +253,9 @@ def api_predict_update(record_id):
     if not records:
         return jsonify({'success': False, 'error': '没有足够的数据进行预测'})
 
-    # 自动填充日期范围
-    if not date_from or not date_to:
-        bid_dates = [r[3] for r in records if r[3]]
-        if bid_dates:
-            if not date_from:
-                date_from = min(bid_dates)
-            if not date_to:
-                date_to = max(bid_dates)
-
-    # 【修复】按开标日期正序排序，确保时间序列分析正确
-    records = sorted(records, key=lambda r: r[3] or '')
+    # 【修复】按开标日期+开标时间升序排序，确保时间序列分析正确
+    # 原始数据按 import_time DESC 排序，但预测算法需要按时间正序
+    records = sorted(records, key=lambda r: (r[3] or '', r[4] or ''))
 
     method_values = [r[6] for r in records if r[6]]
     k2_values = [float(r[7]) for r in records if r[7] and str(r[7]).replace('.', '').isdigit()]
@@ -309,8 +300,8 @@ def api_predict_update(record_id):
             'project_name': project_name,
             'location_filter': location,
             'method_filter': method_category,
-            'date_from': date_from,
-            'date_to': date_to,
+            'date_from': datetime_from,
+            'date_to': datetime_to,
             'data_count': len(records),
             'method_prediction': result.get('method_prediction', {}).get('prediction'),
             'method_confidence': result.get('method_prediction', {}).get('confidence'),

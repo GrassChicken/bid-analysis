@@ -27,6 +27,13 @@ function loadLocations() {
         });
 }
 
+function parseBidDateTime(bidDate, bidTime) {
+    if (!bidDate) return '';
+    const datePart = bidDate.replace(/\//g, '-');
+    if (!bidTime) return datePart;
+    return datePart + ' ' + bidTime;
+}
+
 function updateDataCount() {
     const location = document.getElementById('locationFilter').value;
     const method = document.getElementById('methodFilter').value;
@@ -36,8 +43,18 @@ function updateDataCount() {
     let filtered = allData;
     if (location) filtered = filtered.filter(function(r) { return r.bid_location === location; });
     if (method) filtered = filtered.filter(function(r) { return r.method_category === method; });
-    if (dateFrom) filtered = filtered.filter(function(r) { return r.bid_date >= dateFrom; });
-    if (dateTo) filtered = filtered.filter(function(r) { return r.bid_date <= dateTo; });
+    if (dateFrom) {
+        const dtFrom = dateFrom.replace('T', ' ');
+        filtered = filtered.filter(function(r) {
+            return parseBidDateTime(r.bid_date, r.bid_time) >= dtFrom;
+        });
+    }
+    if (dateTo) {
+        const dtTo = dateTo.replace('T', ' ');
+        filtered = filtered.filter(function(r) {
+            return parseBidDateTime(r.bid_date, r.bid_time) <= dtTo;
+        });
+    }
 
     document.getElementById('dataCount').textContent = filtered.length;
     document.getElementById('k1Count').textContent = filtered.filter(function(r) { return r.k1_value; }).length;
@@ -52,8 +69,11 @@ function doPredict(existingRecordId) {
     const projectName = document.getElementById('projectName').value.trim();
     const locationFilter = document.getElementById('locationFilter').value;
     const methodFilter = document.getElementById('methodFilter').value;
-    const dateFrom = document.getElementById('dateFrom').value;
-    const dateTo = document.getElementById('dateTo').value;
+    const dateFromRaw = document.getElementById('dateFrom').value;
+    const dateToRaw = document.getElementById('dateTo').value;
+    // datetime-local 格式 "2025-01-01T09:30" -> 转换为 "2025-01-01 09:30" 发给后端
+    const dateFrom = dateFromRaw ? dateFromRaw.replace('T', ' ') : '';
+    const dateTo = dateToRaw ? dateToRaw.replace('T', ' ') : '';
 
     if (!projectName) {
         // 输入框抖动提示
@@ -110,8 +130,8 @@ function doPredict(existingRecordId) {
                 project_name: projectName,
                 location: locationFilter || null,
                 method_category: methodFilter || null,
-                date_from: dateFrom || null,
-                date_to: dateTo || null
+                datetime_from: dateFrom || null,
+                datetime_to: dateTo || null
             })
         })
         .then(function(response) {

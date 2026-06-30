@@ -118,10 +118,26 @@ class BidRecord:
             if filters.get('method'):
                 query += ' AND method_category = ?'
                 params.append(filters['method'])
-            if filters.get('date_from'):
+            if filters.get('datetime_from'):
+                # 支持日期+时间精确过滤
+                dt_val = filters['datetime_from']
+                if ' ' in dt_val:
+                    query += " AND (bid_date || ' ' || COALESCE(bid_time, '00:00')) >= ?"
+                else:
+                    query += ' AND bid_date >= ?'
+                params.append(dt_val)
+            elif filters.get('date_from'):
                 query += ' AND bid_date >= ?'
                 params.append(filters['date_from'])
-            if filters.get('date_to'):
+            if filters.get('datetime_to'):
+                # 支持日期+时间精确过滤
+                dt_val = filters['datetime_to']
+                if ' ' in dt_val:
+                    query += " AND (bid_date || ' ' || COALESCE(bid_time, '00:00')) <= ?"
+                else:
+                    query += ' AND bid_date <= ?'
+                params.append(dt_val)
+            elif filters.get('date_to'):
                 query += ' AND bid_date <= ?'
                 params.append(filters['date_to'])
         
@@ -133,22 +149,11 @@ class BidRecord:
         
         # 获取总数
         count_query = query.replace('*', 'COUNT(*)', 1)
-        count_params = [user_id]
-        if filters:
-            if filters.get('location'):
-                count_query = count_query.replace(' AND bid_location LIKE ?', ' AND bid_location LIKE ?', 1)
-                count_params.append(f"%{filters['location']}%")
-            if filters.get('method'):
-                count_query = count_query.replace(' AND method_category = ?', ' AND method_category = ?', 1)
-                count_params.append(filters['method'])
-            if filters.get('date_from'):
-                count_query = count_query.replace(' AND bid_date >= ?', ' AND bid_date >= ?', 1)
-                count_params.append(filters['date_from'])
-            if filters.get('date_to'):
-                count_query = count_query.replace(' AND bid_date <= ?', ' AND bid_date <= ?', 1)
-                count_params.append(filters['date_to'])
-        # Remove LIMIT clause for count query
-        count_query = count_query.split('LIMIT')[0]
+        # Remove ORDER BY and LIMIT for count
+        count_query = count_query.split('ORDER BY')[0]
+        count_params = list(params)
+        # Remove LIMIT and OFFSET params (last two)
+        count_params = count_params[:-2]
         
         cursor.execute(count_query, count_params)
         total = cursor.fetchone()[0]
