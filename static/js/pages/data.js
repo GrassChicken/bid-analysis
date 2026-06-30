@@ -127,6 +127,9 @@ var allData = [];
             if (columnFilters.date) {
                 baseData = baseData.filter(function(r) { return r.bid_date === columnFilters.date; });
             }
+            if (columnFilters.time) {
+                baseData = baseData.filter(function(r) { return (r.bid_time || '').indexOf(columnFilters.time) !== -1; });
+            }
             if (columnFilters.location) {
                 baseData = baseData.filter(function(r) { return (r.bid_location || '').toLowerCase().indexOf(columnFilters.location.toLowerCase()) !== -1; });
             }
@@ -159,6 +162,7 @@ var allData = [];
         function applyColumnFilters() {
             columnFilters.project = document.getElementById('fProject').value;
             columnFilters.date = document.getElementById('fDate').value;
+            columnFilters.time = document.getElementById('fTime').value;
             columnFilters.location = document.getElementById('fLocation').value;
             columnFilters.method = document.getElementById('fMethod').value;
             columnFilters.k2 = document.getElementById('fK2').value;
@@ -187,6 +191,7 @@ var allData = [];
             // 重置列过滤器
             document.getElementById('fProject').value = '';
             document.getElementById('fDate').value = '';
+            document.getElementById('fTime').value = '';
             document.getElementById('fLocation').value = '';
             document.getElementById('fMethod').value = '';
             document.getElementById('fK2').value = '';
@@ -200,7 +205,7 @@ var allData = [];
 
         // 更新过滤指示器（高亮有过滤条件的列输入框）
         function updateFilterIndicators() {
-            var filterIds = ['fProject', 'fDate', 'fLocation', 'fMethod', 'fK2', 'fK1', 'fQ1', 'fImport'];
+            var filterIds = ['fProject', 'fDate', 'fTime', 'fLocation', 'fMethod', 'fK2', 'fK1', 'fQ1', 'fImport'];
             filterIds.forEach(function(id) {
                 var el = document.getElementById(id);
                 if (el) {
@@ -234,7 +239,7 @@ var allData = [];
             var pageRows = displayedData.slice(start, end);
 
             if (pageRows.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="11" style="text-align:center;padding:40px;color:#999;">🔍 没有匹配的数据，请调整过滤条件</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="12" style="text-align:center;padding:40px;color:#999;">🔍 没有匹配的数据，请调整过滤条件</td></tr>';
             } else {
                 tbody.innerHTML = pageRows.map(function(r, index) {
                     var actualIndex = start + index;
@@ -245,6 +250,7 @@ var allData = [];
                         '<td>' + (actualIndex + 1) + '</td>' +
                         '<td title="' + (r.project_name || '') + '">' + (r.project_name || '') + '</td>' +
                         '<td>' + (r.bid_date || '') + '</td>' +
+                        '<td>' + (r.bid_time || '') + '</td>' +
                         '<td>' + (r.bid_location || '') + '</td>' +
                         '<td>' + (r.method_category || '') + '</td>' +
                         '<td>' + (r.k2_value || '') + '</td>' +
