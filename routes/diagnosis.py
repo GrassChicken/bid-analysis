@@ -56,3 +56,12 @@ def api_diagnosis_calibration():
     user_id = session.get('user_id')
     result = diagnostic_engine.calibrate_confidence(user_id)
     return jsonify({'success': True, **result})
+
+
+@diagnosis_bp.route('/api/diagnosis/algorithm-ranking')
+@login_required
+def api_diagnosis_algorithm_ranking():
+    """算法排名评估 API"""
+    user_id = session.get('user_id')
+    result = diagnostic_engine.get_algorithm_ranking(user_id)
+    return jsonify({'success': True, **result})

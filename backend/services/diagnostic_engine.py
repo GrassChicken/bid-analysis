@@ -385,6 +385,186 @@ class DiagnosticEngine:
         }
 
     # ============================================================
+    # 4. 算法排名评估（基于 Top5 算法详情）
+    # ============================================================
+
+    def get_algorithm_ranking(self, user_id: int) -> Dict[str, Any]:
+        """
+        算法排名评估
+        
+        基于已有真实值的预测记录，评估每个算法的预测值与真实值的偏差
+        计算偏差平均值，偏差越小越准确
+        按偏差值从小到大排序
+        偏差最小的前5个算法标记为推荐算法
+        
+        Returns:
+            {
+                'has_data': bool,
+                'k1_ranking': [...],  # K1算法排名列表
+                'q1_ranking': [...],  # Q1算法排名列表（如所有预测都是方法1则为空）
+                'k1_recommended': [...],  # K1推荐算法（前5）
+                'q1_recommended': [...],  # Q1推荐算法（前5）
+            }
+        """
+        conn = sqlite3.connect(self.db_path)
+        cursor = conn.cursor()
+
+        # 获取所有已对比且有真实值的预测记录
+        cursor.execute('''
+            SELECT pr.id, pr.k1_actual, pr.q1_actual, pr.method_prediction
+            FROM prediction_records pr
+            WHERE pr.user_id = ? AND pr.accuracy_checked = 1
+        ''', (user_id,))
+        predictions = cursor.fetchall()
+
+        if not predictions:
+            conn.close()
+            return {
+                'has_data': False,
+                'message': '暂无已对比的预测数据，请先录入真实值',
+                'k1_ranking': [],
+                'q1_ranking': [],
+                'k1_recommended': [],
+                'q1_recommended': []
+            }
+
+        # 构建 prediction_id -> actual_values 映射
+        actual_map = {}
+        for pred_id, k1_actual, q1_actual, method_pred in predictions:
+            # 安全转换：可能为 None、空字符串或 '--' 等无效值
+            try:
+                k1_val = float(k1_actual) if k1_actual and k1_actual not in ('--', '') else None
+            except (ValueError, TypeError):
+                k1_val = None
+            try:
+                q1_val = float(q1_actual) if q1_actual and q1_actual not in ('--', '') else None
+            except (ValueError, TypeError):
+                q1_val = None
+            
+            actual_map[pred_id] = {
+                'k1_actual': k1_val,
+                'q1_actual': q1_val,
+                'method_prediction': method_pred
+            }
+
+        # 获取所有算法详情
+        cursor.execute('''
+            SELECT prediction_id, param_type, rank, algorithm_name, prediction_value, confidence
+            FROM prediction_algorithm_details
+            WHERE prediction_id IN ({})
+            ORDER BY prediction_id, param_type, rank
+        '''.format(','.join(str(pid) for pid in actual_map.keys())))
+        algorithm_details = cursor.fetchall()
+        conn.close()
+
+        if not algorithm_details:
+            return {
+                'has_data': False,
+                'message': '暂无算法详情数据',
+                'k1_ranking': [],
+                'q1_ranking': [],
+                'k1_recommended': [],
+                'q1_recommended': []
+            }
+
+        # 按算法分组统计偏差
+        k1_stats = {}  # algorithm_name -> {'deviations': [], 'confidences': []}
+        q1_stats = {}
+
+        for pred_id, param_type, rank, algo_name, pred_value, confidence in algorithm_details:
+            if pred_id not in actual_map:
+                continue
+
+            actual_data = actual_map[pred_id]
+
+            try:
+                pred_val = float(pred_value)
+            except (ValueError, TypeError):
+                continue
+
+            # K1 统计
+            if param_type == 'K1' and actual_data['k1_actual'] is not None:
+                deviation = abs(pred_val - actual_data['k1_actual'])
+                if algo_name not in k1_stats:
+                    k1_stats[algo_name] = {'deviations': [], 'confidences': []}
+                k1_stats[algo_name]['deviations'].append(deviation)
+                k1_stats[algo_name]['confidences'].append(confidence)
+
+            # Q1 统计（仅当 method_prediction != '1' 时）
+            if param_type == 'Q1' and actual_data['method_prediction'] != '1' and actual_data['q1_actual'] is not None:
+                deviation = abs(pred_val - actual_data['q1_actual'])
+                if algo_name not in q1_stats:
+                    q1_stats[algo_name] = {'deviations': [], 'confidences': []}
+                q1_stats[algo_name]['deviations'].append(deviation)
+                q1_stats[algo_name]['confidences'].append(confidence)
+
+        # 计算平均偏差并排序
+        def calculate_ranking(stats):
+            ranking = []
+            for algo_name, data in stats.items():
+                if not data['deviations']:
+                    continue
+                avg_deviation = sum(data['deviations']) / len(data['deviations'])
+                avg_confidence = sum(data['confidences']) / len(data['confidences'])
+                sample_count = len(data['deviations'])
+                
+                ranking.append({
+                    'algorithm_name': algo_name,
+                    'avg_deviation': round(avg_deviation, 4),
+                    'avg_confidence': round(avg_confidence, 3),
+                    'sample_count': sample_count,
+                    'evaluation_confidence': 0  # 稍后计算
+                })
+            
+            # 按平均偏差从小到大排序
+            ranking.sort(key=lambda x: x['avg_deviation'])
+            return ranking
+
+        k1_ranking = calculate_ranking(k1_stats)
+        q1_ranking = calculate_ranking(q1_stats)
+
+        # 计算评估置信度
+        def calculate_evaluation_confidence(ranking):
+            if not ranking:
+                return
+            
+            for i, item in enumerate(ranking):
+                # 评估置信度 = 历史置信度 * 样本量权重 * 排名权重
+                # 样本量权重：样本越多越可靠，但设置上限
+                sample_weight = min(1.0, item['sample_count'] / 10.0)
+                
+                # 排名权重：排名越靠前权重越高
+                rank_weight = 1.0 - (i / len(ranking)) * 0.3  # 最多降低30%
+                
+                # 偏差权重：偏差越小权重越高
+                deviation_weight = 1.0 / (1.0 + item['avg_deviation'] * 10)
+                
+                # 综合评估置信度
+                evaluation_conf = (
+                    item['avg_confidence'] * 0.4 +  # 历史置信度占40%
+                    sample_weight * 0.3 +  # 样本量占30%
+                    rank_weight * 0.15 +  # 排名占15%
+                    deviation_weight * 0.15  # 偏差占15%
+                )
+                
+                item['evaluation_confidence'] = round(min(1.0, evaluation_conf), 3)
+
+        calculate_evaluation_confidence(k1_ranking)
+        calculate_evaluation_confidence(q1_ranking)
+
+        # 标记推荐算法（前5）
+        k1_recommended = k1_ranking[:5]
+        q1_recommended = q1_ranking[:5]
+
+        return {
+            'has_data': True,
+            'k1_ranking': k1_ranking,
+            'q1_ranking': q1_ranking,
+            'k1_recommended': k1_recommended,
+            'q1_recommended': q1_recommended
+        }
+
+    # ============================================================
     # 内部辅助方法
     # ============================================================
 

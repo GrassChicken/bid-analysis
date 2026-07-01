@@ -16,7 +16,7 @@ from backend.config.config import Config
 # Excel 导出
 # ============================================================
 
-def export_prediction_excel(record: Dict[str, Any], all_methods: List[Dict] = None) -> bytes:
+def export_prediction_excel(record: Dict[str, Any], k1_algorithms: List[Dict] = None, q1_algorithms: List[Dict] = None) -> bytes:
     """
     将单条预测记录导出为格式精美的 Excel 文件
     
@@ -24,7 +24,7 @@ def export_prediction_excel(record: Dict[str, Any], all_methods: List[Dict] = No
     - 渐变色表头
     - 置信度颜色标识（高=绿，中=黄，低=红）
     - Emoji 图标装饰
-    - 算法明细表格
+    - K1/Q1 Top5 算法明细表格
     - 品牌配色
     """
     try:
@@ -238,13 +238,13 @@ def export_prediction_excel(record: Dict[str, Any], all_methods: List[Dict] = No
         
         row += 1
     
-    # ============ 算法明细（如果有） ============
-    if all_methods and len(all_methods) > 0:
+    # ============ K1 Top5 算法明细（如果有） ============
+    if k1_algorithms and len(k1_algorithms) > 0:
         row += 1
         ws.merge_cells(f'A{row}:C{row}')
         ws.row_dimensions[row].height = 32
         section_cell = ws[f'A{row}']
-        section_cell.value = "🧮 20 种统计算法明细"
+        section_cell.value = "🎯 K1 Top5 算法预测结果"
         section_cell.font = Font(name='Arial', size=14, bold=True, color=PRIMARY)
         section_cell.fill = PatternFill(start_color=PRIMARY_LIGHT, end_color=PRIMARY_LIGHT, fill_type='solid')
         section_cell.border = Border(bottom=Side(style='medium', color=PRIMARY))
@@ -253,38 +253,96 @@ def export_prediction_excel(record: Dict[str, Any], all_methods: List[Dict] = No
         # 表头
         row += 1
         ws.row_dimensions[row].height = 35
-        headers = ["🔢 序号", "📐 算法名称", "🔮 预测结果"]
+        headers = ["🔢 排名", "📐 算法名称", "🔮 预测值（置信度）"]
         for col_idx, header in enumerate(headers, 1):
             cell = ws.cell(row=row, column=col_idx)
             cell.value = header
             cell.font = header_font
-            cell.fill = PatternFill(start_color=ACCENT_PURPLE, end_color=ACCENT_PURPLE, fill_type='solid')
+            cell.fill = PatternFill(start_color=ACCENT_GREEN, end_color=ACCENT_GREEN, fill_type='solid')
             cell.border = thin_border
             cell.alignment = header_align
         
         row += 1
-        for idx, method in enumerate(all_methods, 1):
+        for idx, algo in enumerate(k1_algorithms[:5], 1):
             ws.row_dimensions[row].height = 28
             alt_fill = PatternFill(start_color=BG_LIGHT if idx % 2 == 1 else WHITE,
                                    end_color=BG_LIGHT if idx % 2 == 1 else WHITE,
                                    fill_type='solid')
             
             c1 = ws.cell(row=row, column=1)
-            c1.value = idx
-            c1.font = Font(name='Arial', size=10, bold=True, color=TEXT_GRAY)
+            c1.value = f"#{idx}"
+            c1.font = Font(name='Arial', size=11, bold=True, color=PRIMARY)
             c1.fill = alt_fill
             c1.border = thin_border
             c1.alignment = center_align
             
             c2 = ws.cell(row=row, column=2)
-            c2.value = method.get('method_name', '—')
+            c2.value = algo.get('algorithm_name', '—')
             c2.font = Font(name='Arial', size=10, color=TEXT_DARK)
             c2.fill = alt_fill
             c2.border = thin_border
             c2.alignment = left_align
             
             c3 = ws.cell(row=row, column=3)
-            c3.value = method.get('prediction', '—')
+            pred_value = algo.get('prediction_value', '—')
+            confidence = algo.get('confidence', 0)
+            c3.value = f"{pred_value} ({confidence:.1%})"
+            c3.font = Font(name='Arial', size=10, bold=True, color=PRIMARY)
+            c3.fill = alt_fill
+            c3.border = thin_border
+            c3.alignment = center_align
+            
+            row += 1
+    
+    # ============ Q1 Top5 算法明细（如果有且非方法1） ============
+    if q1_algorithms and len(q1_algorithms) > 0 and record.get('method_prediction') != '1':
+        row += 1
+        ws.merge_cells(f'A{row}:C{row}')
+        ws.row_dimensions[row].height = 32
+        section_cell = ws[f'A{row}']
+        section_cell.value = "⚙️ Q1 Top5 算法预测结果"
+        section_cell.font = Font(name='Arial', size=14, bold=True, color=PRIMARY)
+        section_cell.fill = PatternFill(start_color=PRIMARY_LIGHT, end_color=PRIMARY_LIGHT, fill_type='solid')
+        section_cell.border = Border(bottom=Side(style='medium', color=PRIMARY))
+        section_cell.alignment = Alignment(horizontal='left', vertical='center')
+        
+        # 表头
+        row += 1
+        ws.row_dimensions[row].height = 35
+        headers = ["🔢 排名", "📐 算法名称", "🔮 预测值（置信度）"]
+        for col_idx, header in enumerate(headers, 1):
+            cell = ws.cell(row=row, column=col_idx)
+            cell.value = header
+            cell.font = header_font
+            cell.fill = PatternFill(start_color=ACCENT_BLUE, end_color=ACCENT_BLUE, fill_type='solid')
+            cell.border = thin_border
+            cell.alignment = header_align
+        
+        row += 1
+        for idx, algo in enumerate(q1_algorithms[:5], 1):
+            ws.row_dimensions[row].height = 28
+            alt_fill = PatternFill(start_color=BG_LIGHT if idx % 2 == 1 else WHITE,
+                                   end_color=BG_LIGHT if idx % 2 == 1 else WHITE,
+                                   fill_type='solid')
+            
+            c1 = ws.cell(row=row, column=1)
+            c1.value = f"#{idx}"
+            c1.font = Font(name='Arial', size=11, bold=True, color=PRIMARY)
+            c1.fill = alt_fill
+            c1.border = thin_border
+            c1.alignment = center_align
+            
+            c2 = ws.cell(row=row, column=2)
+            c2.value = algo.get('algorithm_name', '—')
+            c2.font = Font(name='Arial', size=10, color=TEXT_DARK)
+            c2.fill = alt_fill
+            c2.border = thin_border
+            c2.alignment = left_align
+            
+            c3 = ws.cell(row=row, column=3)
+            pred_value = algo.get('prediction_value', '—')
+            confidence = algo.get('confidence', 0)
+            c3.value = f"{pred_value} ({confidence:.1%})"
             c3.font = Font(name='Arial', size=10, bold=True, color=PRIMARY)
             c3.fill = alt_fill
             c3.border = thin_border
@@ -330,11 +388,12 @@ def export_prediction_excel(record: Dict[str, Any], all_methods: List[Dict] = No
 # PDF 导出
 # ============================================================
 
-def export_prediction_pdf(record: Dict[str, Any], all_methods: List[Dict] = None) -> bytes:
+def export_prediction_pdf(record: Dict[str, Any], k1_algorithms: List[Dict] = None, q1_algorithms: List[Dict] = None) -> bytes:
     """
     将单条预测记录导出为精美的 PDF 报告
     
     使用 reportlab + CID 中文字体（STSong-Light）
+    包含 K1 和 Q1 的 Top5 算法预测结果
     """
     try:
         from reportlab.lib.pagesizes import A4
@@ -582,41 +641,101 @@ def export_prediction_pdf(record: Dict[str, Any], all_methods: List[Dict] = None
     pred_table.setStyle(TableStyle(table_styles))
     elements.append(pred_table)
     
-    # ---- 算法明细 ----
-    if all_methods and len(all_methods) > 0:
-        elements.append(Spacer(1, 4*mm))
-        elements.append(Paragraph('  20 种统计算法明细', styles['CNSection']))
+    # ============ K1 Top5 算法明细（如果有） ============
+    if k1_algorithms and len(k1_algorithms) > 0:
+        elements.append(Spacer(1, 6*mm))
+        elements.append(Paragraph('  🎯 K1 Top5 算法预测结果', styles['CNSection']))
         
-        method_data = [[
-            Paragraph('  #', ParagraphStyle('CNMHead', fontName='STSong-Light', fontSize=10, bold=True, textColor=white)),
-            Paragraph('  算法名称', ParagraphStyle('CNMHead', fontName='STSong-Light', fontSize=10, bold=True, textColor=white)),
-            Paragraph('  预测结果', ParagraphStyle('CNMHead', fontName='STSong-Light', fontSize=10, bold=True, textColor=white)),
+        k1_data = [[
+            Paragraph('  排名', ParagraphStyle('CNK1Head', fontName='STSong-Light', fontSize=10, bold=True, textColor=white)),
+            Paragraph('  算法名称', ParagraphStyle('CNK1Head', fontName='STSong-Light', fontSize=10, bold=True, textColor=white)),
+            Paragraph('  预测值', ParagraphStyle('CNK1Head', fontName='STSong-Light', fontSize=10, bold=True, textColor=white)),
+            Paragraph('  置信度', ParagraphStyle('CNK1Head', fontName='STSong-Light', fontSize=10, bold=True, textColor=white)),
         ]]
         
-        for idx, method in enumerate(all_methods, 1):
+        for idx, algo in enumerate(k1_algorithms[:5], 1):
             bg = BG_LIGHT if idx % 2 == 1 else white
-            method_data.append([
-                Paragraph(f'  {idx}', ParagraphStyle('CNMIdx', fontName='STSong-Light', fontSize=9, textColor=TEXT_GRAY)),
-                Paragraph(f'  {method.get("method_name", "—")}', ParagraphStyle('CNMName', fontName='STSong-Light', fontSize=10, textColor=TEXT_DARK)),
-                Paragraph(f'  {method.get("prediction", "—")}', ParagraphStyle('CNMPred', fontName='STSong-Light', fontSize=10, bold=True, textColor=PRIMARY)),
+            confidence = algo.get('confidence', 0)
+            conf_text, conf_bg, conf_color = get_confidence_info(confidence)
+            
+            k1_data.append([
+                Paragraph(f'  #{idx}', ParagraphStyle('CNK1Rank', fontName='STSong-Light', fontSize=10, bold=True, textColor=PRIMARY)),
+                Paragraph(f'  {algo.get("algorithm_name", "—")}', ParagraphStyle('CNK1Name', fontName='STSong-Light', fontSize=10, textColor=TEXT_DARK)),
+                Paragraph(f'  {algo.get("prediction_value", "—")}', ParagraphStyle('CNK1Pred', fontName='STSong-Light', fontSize=10, bold=True, textColor=PRIMARY)),
+                Paragraph(f'  {conf_text} ({confidence:.1%})', ParagraphStyle('CNK1Conf', fontName='STSong-Light', fontSize=9, bold=True, textColor=conf_color)),
             ])
         
-        method_table = Table(method_data, colWidths=[20*mm, 80*mm, 75*mm])
-        m_styles = [
-            ('BACKGROUND', (0, 0), (-1, 0), PRIMARY_DARK),
+        k1_table = Table(k1_data, colWidths=[20*mm, 70*mm, 35*mm, 45*mm])
+        k1_styles = [
+            ('BACKGROUND', (0, 0), (-1, 0), ACCENT_GREEN),
             ('GRID', (0, 0), (-1, -1), 0.5, BORDER_COLOR),
             ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
-            ('TOPPADDING', (0, 0), (-1, -1), 4),
-            ('BOTTOMPADDING', (0, 0), (-1, -1), 4),
+            ('TOPPADDING', (0, 0), (-1, -1), 5),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 5),
             ('LEFTPADDING', (0, 0), (-1, -1), 6),
             ('RIGHTPADDING', (0, 0), (-1, -1), 6),
             ('FONTNAME', (0, 0), (-1, -1), 'STSong-Light'),
         ]
-        for i in range(1, len(method_data)):
+        # 置信度列背景色
+        for i in range(1, len(k1_data)):
+            confidence = k1_algorithms[i-1].get('confidence', 0)
+            _, conf_bg, _ = get_confidence_info(confidence)
+            k1_styles.append(('BACKGROUND', (3, i), (3, i), conf_bg))
+        # 数据行交替底色
+        for i in range(1, len(k1_data)):
             bg = BG_LIGHT if i % 2 == 1 else white
-            m_styles.append(('BACKGROUND', (0, i), (-1, i), bg))
-        method_table.setStyle(TableStyle(m_styles))
-        elements.append(method_table)
+            k1_styles.append(('BACKGROUND', (0, i), (2, i), bg))
+        
+        k1_table.setStyle(TableStyle(k1_styles))
+        elements.append(k1_table)
+    
+    # ============ Q1 Top5 算法明细（如果有且非方法1） ============
+    if q1_algorithms and len(q1_algorithms) > 0 and record.get('method_prediction') != '1':
+        elements.append(Spacer(1, 6*mm))
+        elements.append(Paragraph('  ⚙️ Q1 Top5 算法预测结果', styles['CNSection']))
+        
+        q1_data = [[
+            Paragraph('  排名', ParagraphStyle('CNQ1Head', fontName='STSong-Light', fontSize=10, bold=True, textColor=white)),
+            Paragraph('  算法名称', ParagraphStyle('CNQ1Head', fontName='STSong-Light', fontSize=10, bold=True, textColor=white)),
+            Paragraph('  预测值', ParagraphStyle('CNQ1Head', fontName='STSong-Light', fontSize=10, bold=True, textColor=white)),
+            Paragraph('  置信度', ParagraphStyle('CNQ1Head', fontName='STSong-Light', fontSize=10, bold=True, textColor=white)),
+        ]]
+        
+        for idx, algo in enumerate(q1_algorithms[:5], 1):
+            bg = BG_LIGHT if idx % 2 == 1 else white
+            confidence = algo.get('confidence', 0)
+            conf_text, conf_bg, conf_color = get_confidence_info(confidence)
+            
+            q1_data.append([
+                Paragraph(f'  #{idx}', ParagraphStyle('CNQ1Rank', fontName='STSong-Light', fontSize=10, bold=True, textColor=PRIMARY)),
+                Paragraph(f'  {algo.get("algorithm_name", "—")}', ParagraphStyle('CNQ1Name', fontName='STSong-Light', fontSize=10, textColor=TEXT_DARK)),
+                Paragraph(f'  {algo.get("prediction_value", "—")}', ParagraphStyle('CNQ1Pred', fontName='STSong-Light', fontSize=10, bold=True, textColor=PRIMARY)),
+                Paragraph(f'  {conf_text} ({confidence:.1%})', ParagraphStyle('CNQ1Conf', fontName='STSong-Light', fontSize=9, bold=True, textColor=conf_color)),
+            ])
+        
+        q1_table = Table(q1_data, colWidths=[20*mm, 70*mm, 35*mm, 45*mm])
+        q1_styles = [
+            ('BACKGROUND', (0, 0), (-1, 0), ACCENT_BLUE),
+            ('GRID', (0, 0), (-1, -1), 0.5, BORDER_COLOR),
+            ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+            ('TOPPADDING', (0, 0), (-1, -1), 5),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 5),
+            ('LEFTPADDING', (0, 0), (-1, -1), 6),
+            ('RIGHTPADDING', (0, 0), (-1, -1), 6),
+            ('FONTNAME', (0, 0), (-1, -1), 'STSong-Light'),
+        ]
+        # 置信度列背景色
+        for i in range(1, len(q1_data)):
+            confidence = q1_algorithms[i-1].get('confidence', 0)
+            _, conf_bg, _ = get_confidence_info(confidence)
+            q1_styles.append(('BACKGROUND', (3, i), (3, i), conf_bg))
+        # 数据行交替底色
+        for i in range(1, len(q1_data)):
+            bg = BG_LIGHT if i % 2 == 1 else white
+            q1_styles.append(('BACKGROUND', (0, i), (2, i), bg))
+        
+        q1_table.setStyle(TableStyle(q1_styles))
+        elements.append(q1_table)
     
     # ---- 底部说明 ----
     elements.append(Spacer(1, 12*mm))
@@ -637,8 +756,8 @@ def export_prediction_pdf(record: Dict[str, Any], all_methods: List[Dict] = None
 
 def get_prediction_details(record_id: int, user_id: int) -> tuple:
     """
-    获取预测记录
-    Returns: (record_dict, methods_list)
+    获取预测记录及其Top5算法详情
+    Returns: (record_dict, k1_algorithms, q1_algorithms)
     """
     from backend.models.prediction import Prediction
     
@@ -646,7 +765,10 @@ def get_prediction_details(record_id: int, user_id: int) -> tuple:
     record = pred_model.get_prediction_by_id(record_id, user_id)
     
     if not record:
-        return None, None
+        return None, None, None
     
-    # 算法明细功能暂不启用（需要重新运行预测），返回 None
-    return record, None
+    # 获取Top5算法详情
+    k1_algorithms = pred_model.get_algorithm_details(record_id, 'K1')
+    q1_algorithms = pred_model.get_algorithm_details(record_id, 'Q1')
+    
+    return record, k1_algorithms, q1_algorithms

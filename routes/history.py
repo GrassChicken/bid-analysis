@@ -153,7 +153,7 @@ def api_export_prediction(record_id, format):
     """导出单条预测记录为 Excel 或 PDF"""
     user_id = session.get('user_id')
     
-    record, methods = get_prediction_details(record_id, user_id)
+    record, k1_algorithms, q1_algorithms = get_prediction_details(record_id, user_id)
     if not record:
         return jsonify({'success': False, 'error': '记录不存在'}), 404
     
@@ -162,7 +162,7 @@ def api_export_prediction(record_id, format):
     
     try:
         if format == 'excel':
-            data = export_prediction_excel(record, methods)
+            data = export_prediction_excel(record, k1_algorithms, q1_algorithms)
             filename = f"预测报告_{project_name}_{timestamp}.xlsx"
             return send_file(
                 io.BytesIO(data),
@@ -171,7 +171,7 @@ def api_export_prediction(record_id, format):
                 download_name=filename
             )
         elif format == 'pdf':
-            data = export_prediction_pdf(record, methods)
+            data = export_prediction_pdf(record, k1_algorithms, q1_algorithms)
             filename = f"预测报告_{project_name}_{timestamp}.pdf"
             return send_file(
                 io.BytesIO(data),

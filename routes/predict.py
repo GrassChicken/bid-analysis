@@ -165,6 +165,18 @@ def api_predict():
             result['record_id'] = record_id
             result['duplicate'] = False
             
+            # 保存 Top5 算法详情
+            try:
+                k1_all = result.get('k1_all', [])
+                if k1_all:
+                    prediction_model.save_algorithm_details(record_id, 'K1', k1_all)
+                
+                q1_all = result.get('q1_all', [])
+                if q1_all and method_pred != '1':  # 方法1不存储Q1
+                    prediction_model.save_algorithm_details(record_id, 'Q1', q1_all)
+            except Exception as e:
+                print(f"⚠️ 保存算法详情失败: {e}")
+            
             # 记录操作日志
             try:
                 log_model.log(
@@ -327,6 +339,27 @@ def api_predict_update(record_id):
         if success:
             result['record_id'] = record_id
             result['updated'] = True
+            
+            # 更新 Top5 算法详情（覆盖模式）
+            try:
+                k1_all = result.get('k1_all', [])
+                if k1_all:
+                    prediction_model.save_algorithm_details(record_id, 'K1', k1_all)
+                
+                q1_all = result.get('q1_all', [])
+                if q1_all and method_pred != '1':  # 方法1不存储Q1
+                    prediction_model.save_algorithm_details(record_id, 'Q1', q1_all)
+                elif method_pred == '1':
+                    # 方法1时，删除Q1的算法详情
+                    import sqlite3
+                    conn = sqlite3.connect(Config.DATABASE_PATH)
+                    cursor = conn.cursor()
+                    cursor.execute('DELETE FROM prediction_algorithm_details WHERE prediction_id = ? AND param_type = ?',
+                                   (record_id, 'Q1'))
+                    conn.commit()
+                    conn.close()
+            except Exception as e:
+                print(f"⚠️ 更新算法详情失败: {e}")
             
             # 记录操作日志
             try:

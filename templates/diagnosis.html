@@ -41,6 +41,11 @@
         <div class="overview-card__title">置信度校准</div>
         <div class="overview-card__desc">对比标称置信度 vs 实际准确率，检验系统可信度</div>
     </div>
+    <div class="overview-card" onclick="loadAlgorithmRanking()">
+        <div class="overview-card__icon">🏆</div>
+        <div class="overview-card__title">算法排名</div>
+        <div class="overview-card__desc">基于真实值评估算法偏差，推荐最优算法</div>
+    </div>
 </div>
 
 <!-- 异常检测区域 -->
@@ -77,6 +82,21 @@
     
     <div class="panel-body">
         <div id="performanceResult"></div>
+    </div>
+</div>
+
+<!-- 算法排名区域 -->
+<div class="diagnosis-panel hidden" id="rankingPanel">
+    <div class="panel-header">
+        <div class="panel-header__icon">🏆</div>
+        <div>
+            <h3>算法排名评估</h3>
+            <p class="panel-header__desc">基于已有真实值的预测记录，评估每个算法的预测偏差，推荐最优算法</p>
+        </div>
+    </div>
+    
+    <div class="panel-body">
+        <div id="rankingResult"></div>
     </div>
 </div>
 
@@ -368,6 +388,136 @@
             }
             
             document.getElementById('calibrationResult').innerHTML = html;
+        }
+
+        // ============================================================
+        // 算法排名评估
+        // ============================================================
+
+        function loadAlgorithmRanking() {
+            var panel = document.getElementById('rankingPanel');
+            panel.classList.remove('hidden');
+            panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+            document.getElementById('rankingResult').innerHTML = '<div class="loading-spinner">🏆 评估中...</div>';
+
+            fetch('/api/diagnosis/algorithm-ranking')
+                .then(function(r) { return r.json(); })
+                .then(function(data) {
+                    if (data.success) {
+                        renderRankingResult(data);
+                    }
+                });
+        }
+
+        function renderRankingResult(data) {
+            var html = '';
+
+            if (!data.has_data) {
+                html += '<div class="empty-state">';
+                html += '<div class="empty-state__icon">🏆</div>';
+                html += '<h3>' + data.message + '</h3>';
+                html += '<p>请先在“预测准确率分析”页面录入真实值</p>';
+                html += '</div>';
+                document.getElementById('rankingResult').innerHTML = html;
+                return;
+            }
+
+            // K1 算法排名
+            if (data.k1_ranking && data.k1_ranking.length > 0) {
+                html += '<h4 class="method-section-title">🎯 K1 值算法排名</h4>';
+                html += '<div class="ranking-intro">基于真实值评估，偏差越小越准确</div>';
+                html += '<div class="method-table">';
+                html += '<div class="method-table__header">';
+                html += '<span>排名</span><span>算法名称</span><span>平均偏差</span><span>样本数</span><span>评估置信度</span><span>状态</span>';
+                html += '</div>';
+
+                data.k1_ranking.forEach(function(item, i) {
+                    var rankClass = i === 0 ? 'rank-1' : (i === 1 ? 'rank-2' : (i === 2 ? 'rank-3' : ''));
+                    var isRecommended = i < 5;
+                    var statusHtml = isRecommended ? '<span class="recommend-badge">⭐ 推荐</span>' : '';
+
+                    html += '<div class="method-table__row ' + rankClass + '">';
+                    html += '<span class="rank-badge ' + rankClass + '">#' + (i+1) + '</span>';
+                    html += '<span class="method-name">' + item.algorithm_name + '</span>';
+                    html += '<span class="method-deviation">' + item.avg_deviation.toFixed(4) + '</span>';
+                    html += '<span class="method-count">' + item.sample_count + ' 次</span>';
+                    html += '<span class="method-confidence">' + (item.evaluation_confidence * 100).toFixed(1) + '%</span>';
+                    html += '<span>' + statusHtml + '</span>';
+                    html += '</div>';
+                });
+                html += '</div>';
+
+                // K1 推荐算法卡片
+                if (data.k1_recommended && data.k1_recommended.length > 0) {
+                    html += '<div class="recommended-section">';
+                    html += '<h5 class="recommended-title">🌟 K1 推荐算法（Top 5）</h5>';
+                    html += '<div class="recommended-cards">';
+                    data.k1_recommended.forEach(function(item, i) {
+                        html += '<div class="recommended-card">';
+                        html += '<div class="recommended-card__rank">#' + (i+1) + '</div>';
+                        html += '<div class="recommended-card__name">' + item.algorithm_name + '</div>';
+                        html += '<div class="recommended-card__stats">';
+                        html += '<div>平均偏差: ' + item.avg_deviation.toFixed(4) + '</div>';
+                        html += '<div>评估置信度: ' + (item.evaluation_confidence * 100).toFixed(1) + '%</div>';
+                        html += '</div>';
+                        html += '</div>';
+                    });
+                    html += '</div></div>';
+                }
+            }
+
+            // Q1 算法排名
+            if (data.q1_ranking && data.q1_ranking.length > 0) {
+                html += '<h4 class="method-section-title">⚙️ Q1 值算法排名</h4>';
+                html += '<div class="ranking-intro">基于真实值评估，偏差越小越准确（仅统计非方法1的预测记录）</div>';
+                html += '<div class="method-table">';
+                html += '<div class="method-table__header">';
+                html += '<span>排名</span><span>算法名称</span><span>平均偏差</span><span>样本数</span><span>评估置信度</span><span>状态</span>';
+                html += '</div>';
+
+                data.q1_ranking.forEach(function(item, i) {
+                    var rankClass = i === 0 ? 'rank-1' : (i === 1 ? 'rank-2' : (i === 2 ? 'rank-3' : ''));
+                    var isRecommended = i < 5;
+                    var statusHtml = isRecommended ? '<span class="recommend-badge">⭐ 推荐</span>' : '';
+
+                    html += '<div class="method-table__row ' + rankClass + '">';
+                    html += '<span class="rank-badge ' + rankClass + '">#' + (i+1) + '</span>';
+                    html += '<span class="method-name">' + item.algorithm_name + '</span>';
+                    html += '<span class="method-deviation">' + item.avg_deviation.toFixed(4) + '</span>';
+                    html += '<span class="method-count">' + item.sample_count + ' 次</span>';
+                    html += '<span class="method-confidence">' + (item.evaluation_confidence * 100).toFixed(1) + '%</span>';
+                    html += '<span>' + statusHtml + '</span>';
+                    html += '</div>';
+                });
+                html += '</div>';
+
+                // Q1 推荐算法卡片
+                if (data.q1_recommended && data.q1_recommended.length > 0) {
+                    html += '<div class="recommended-section">';
+                    html += '<h5 class="recommended-title">🌟 Q1 推荐算法（Top 5）</h5>';
+                    html += '<div class="recommended-cards">';
+                    data.q1_recommended.forEach(function(item, i) {
+                        html += '<div class="recommended-card">';
+                        html += '<div class="recommended-card__rank">#' + (i+1) + '</div>';
+                        html += '<div class="recommended-card__name">' + item.algorithm_name + '</div>';
+                        html += '<div class="recommended-card__stats">';
+                        html += '<div>平均偏差: ' + item.avg_deviation.toFixed(4) + '</div>';
+                        html += '<div>评估置信度: ' + (item.evaluation_confidence * 100).toFixed(1) + '%</div>';
+                        html += '</div>';
+                        html += '</div>';
+                    });
+                    html += '</div></div>';
+                }
+            } else {
+                html += '<div class="empty-state" style="margin-top: 30px;">';
+                html += '<div class="empty-state__icon">ℹ️</div>';
+                html += '<h3>暂无 Q1 算法排名数据</h3>';
+                html += '<p>所有预测记录均为方法1，不涉及 Q1 值</p>';
+                html += '</div>';
+            }
+
+            document.getElementById('rankingResult').innerHTML = html;
         }
     </script>
 {% endblock %}

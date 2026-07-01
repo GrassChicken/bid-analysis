@@ -17,6 +17,7 @@ class Prediction:
         """初始化模型"""
         self.db_path = db_path
         self.init_table()
+        self.init_algorithm_details_table()
 
     def init_table(self):
         """初始化预测记录表"""
@@ -94,6 +95,113 @@ class Prediction:
 
         conn.commit()
         conn.close()
+
+    def init_algorithm_details_table(self):
+        """初始化算法详情表（存储每次预测的 Top5 算法数据）"""
+        conn = sqlite3.connect(self.db_path)
+        cursor = conn.cursor()
+
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS prediction_algorithm_details (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                prediction_id INTEGER NOT NULL,
+                param_type TEXT NOT NULL,
+                rank INTEGER NOT NULL,
+                algorithm_name TEXT NOT NULL,
+                prediction_value TEXT NOT NULL,
+                confidence REAL NOT NULL,
+                FOREIGN KEY (prediction_id) REFERENCES prediction_records(id) ON DELETE CASCADE
+            )
+        ''')
+
+        cursor.execute('CREATE INDEX IF NOT EXISTS idx_algo_detail_prediction ON prediction_algorithm_details(prediction_id)')
+        cursor.execute('CREATE INDEX IF NOT EXISTS idx_algo_detail_param ON prediction_algorithm_details(param_type)')
+
+        conn.commit()
+        conn.close()
+
+    def save_algorithm_details(self, prediction_id: int, param_type: str, algorithms: List[Dict]) -> bool:
+        """保存 Top5 算法详情
+        
+        Args:
+            prediction_id: 预测记录 ID
+            param_type: 参数类型 ('K1' 或 'Q1')
+            algorithms: 算法列表，每项包含 method, prediction, confidence
+        Returns:
+            是否成功
+        """
+        conn = sqlite3.connect(self.db_path)
+        cursor = conn.cursor()
+
+        try:
+            # 先删除该预测记录对应参数类型的旧数据（支持覆盖）
+            cursor.execute('DELETE FROM prediction_algorithm_details WHERE prediction_id = ? AND param_type = ?',
+                           (prediction_id, param_type))
+
+            # 插入新的 Top5 算法数据
+            for rank, algo in enumerate(algorithms[:5], start=1):
+                cursor.execute('''
+                    INSERT INTO prediction_algorithm_details
+                    (prediction_id, param_type, rank, algorithm_name, prediction_value, confidence)
+                    VALUES (?, ?, ?, ?, ?, ?)
+                ''', (
+                    prediction_id,
+                    param_type,
+                    rank,
+                    algo.get('method', ''),
+                    str(algo.get('prediction', '')),
+                    algo.get('confidence', 0)
+                ))
+
+            conn.commit()
+            return True
+        except sqlite3.Error as e:
+            print(f"❌ 保存算法详情失败: {e}")
+            return False
+        finally:
+            conn.close()
+
+    def get_algorithm_details(self, prediction_id: int, param_type: str = None) -> List[Dict]:
+        """获取预测记录的算法详情"""
+        conn = sqlite3.connect(self.db_path)
+        cursor = conn.cursor()
+
+        if param_type:
+            cursor.execute('''
+                SELECT rank, algorithm_name, prediction_value, confidence
+                FROM prediction_algorithm_details
+                WHERE prediction_id = ? AND param_type = ?
+                ORDER BY rank
+            ''', (prediction_id, param_type))
+        else:
+            cursor.execute('''
+                SELECT param_type, rank, algorithm_name, prediction_value, confidence
+                FROM prediction_algorithm_details
+                WHERE prediction_id = ?
+                ORDER BY param_type, rank
+            ''', (prediction_id,))
+
+        rows = cursor.fetchall()
+        conn.close()
+
+        results = []
+        for row in rows:
+            if param_type:
+                results.append({
+                    'rank': row[0],
+                    'algorithm_name': row[1],
+                    'prediction_value': row[2],
+                    'confidence': row[3]
+                })
+            else:
+                results.append({
+                    'param_type': row[0],
+                    'rank': row[1],
+                    'algorithm_name': row[2],
+                    'prediction_value': row[3],
+                    'confidence': row[4]
+                })
+        return results
 
     def create_prediction(self, user_id: int, prediction_data: Dict[str, Any]) -> int:
         """创建预测记录（使用北京时间）
