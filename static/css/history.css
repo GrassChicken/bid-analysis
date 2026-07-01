@@ -205,7 +205,7 @@
 }
 .filter-input {
     width: 100%;
-    padding: 12px 16px;
+    padding: 12px 0px;
     border: 2px solid #e8ecf1;
     border-radius: 12px;
     font-size: 14px;
