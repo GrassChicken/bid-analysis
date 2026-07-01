@@ -141,10 +141,10 @@ def api_data_import():
                     parts = val_str.split(':')
                     hour = int(parts[0])
                     minute = int(parts[1]) if len(parts) > 1 else 0
-                    return f"{hour}:{minute:02d}"
+                    return f"{hour:02d}:{minute:02d}"
                 elif val_str.isdigit():
                     if len(val_str) == 3:
-                        return f"{val_str[0]}:{val_str[1:]}"
+                        return f"0{val_str[0]}:{val_str[1:]}"
                     elif len(val_str) == 4:
                         return f"{val_str[:2]}:{val_str[2:]}"
                 return val_str
