@@ -61,7 +61,7 @@ def api_data_list():
                    import_time
             FROM bid_records
             WHERE user_id = ?
-            ORDER BY bid_date DESC
+            ORDER BY bid_date DESC, bid_time DESC
         ''', (user_id,))
         records = [dict(row) for row in cursor.fetchall()]
 
@@ -631,7 +631,7 @@ def api_data_export():
                        method_category, k2_value, k1_value, q1_value
                 FROM bid_records
                 WHERE user_id = ? AND id IN ({placeholders})
-                ORDER BY bid_date DESC
+                ORDER BY bid_date DESC, bid_time DESC
             '''
             cursor.execute(sql, [user_id] + filtered_ids)
         else:
@@ -640,7 +640,7 @@ def api_data_export():
                        method_category, k2_value, k1_value, q1_value
                 FROM bid_records
                 WHERE user_id = ?
-                ORDER BY bid_date DESC
+                ORDER BY bid_date DESC, bid_time DESC
             ''', (user_id,))
 
         records = cursor.fetchall()
