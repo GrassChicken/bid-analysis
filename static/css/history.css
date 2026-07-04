@@ -1030,3 +1030,341 @@
         font-size: 13px;
     }
 }
+
+/* ========== 算法详情按钮 ========== */
+.card-detail-btn {
+    width: 30px;
+    height: 30px;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 14px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.card-detail-btn:hover {
+    transform: scale(1.1);
+    box-shadow: 0 2px 8px rgba(102, 126, 234, 0.4);
+}
+
+@media (max-width: 768px) {
+    .card-detail-btn {
+        width: 26px;
+        height: 26px;
+        font-size: 12px;
+    }
+}
+
+/* ========== 算法详情弹窗 ========== */
+.algo-detail-box {
+    background: white;
+    border-radius: 20px;
+    width: 90%;
+    max-width: 800px;
+    max-height: 85vh;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+    animation: slideUp 0.3s ease;
+    overflow: hidden;
+}
+
+.algo-detail-box__header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 24px 28px 16px;
+    border-bottom: 2px solid #f0f0f0;
+    background: linear-gradient(135deg, #f0f7ff 0%, #e8f4fd 100%);
+}
+
+.algo-detail-box__icon {
+    font-size: 1.6em;
+}
+
+.algo-detail-box__title {
+    flex: 1;
+    font-size: 1.3em;
+    font-weight: 700;
+    color: #2c3e50;
+    margin: 0;
+}
+
+.algo-detail-box__close {
+    width: 32px;
+    height: 32px;
+    border: none;
+    background: rgba(0,0,0,0.05);
+    border-radius: 50%;
+    cursor: pointer;
+    font-size: 18px;
+    color: #7f8c8d;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.algo-detail-box__close:hover {
+    background: rgba(231, 76, 60, 0.1);
+    color: #e74c3c;
+    transform: rotate(90deg);
+}
+
+.algo-detail-box__body {
+    padding: 24px 28px;
+    overflow-y: auto;
+    flex: 1;
+}
+
+.algo-detail-box__footer {
+    padding: 16px 28px;
+    border-top: 2px solid #f0f0f0;
+    text-align: right;
+    background: #f8f9fb;
+}
+
+.algo-btn {
+    padding: 10px 24px;
+    border: none;
+    border-radius: 10px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.algo-btn--secondary {
+    background: #ecf0f1;
+    color: #2c3e50;
+}
+.algo-btn--secondary:hover {
+    background: #dfe6e9;
+}
+
+/* 项目信息 */
+.algo-project-info {
+    padding: 12px 16px;
+    background: linear-gradient(135deg, #fef9e7 0%, #fcf4d9 100%);
+    border-radius: 12px;
+    margin-bottom: 20px;
+    border-left: 4px solid #f39c12;
+}
+.algo-project-info strong {
+    font-size: 1.05em;
+    color: #2c3e50;
+}
+
+/* 算法分区 */
+.algo-section {
+    margin-bottom: 28px;
+}
+
+.algo-section__title {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 1.1em;
+    font-weight: 700;
+    color: #2c3e50;
+    margin: 0 0 16px 0;
+    padding-bottom: 10px;
+    border-bottom: 2px solid #e8ecf1;
+}
+.algo-section__title span {
+    font-size: 1.2em;
+}
+
+/* 算法表格 */
+.algo-table-wrapper {
+    overflow-x: auto;
+    border-radius: 12px;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+}
+
+.algo-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 14px;
+    background: white;
+}
+
+.algo-table th {
+    background: linear-gradient(135deg, #f8f9fb 0%, #eef1f5 100%);
+    padding: 14px 12px;
+    text-align: left;
+    font-weight: 600;
+    color: #5a6b7e;
+    border-bottom: 2px solid #e8ecf1;
+    font-size: 13px;
+}
+
+.algo-table td {
+    padding: 14px 12px;
+    border-bottom: 1px solid #f0f0f0;
+}
+
+.algo-row {
+    transition: all 0.2s ease;
+}
+.algo-row:hover {
+    background: #f8f9fb;
+}
+
+.algo-row--selected {
+    background: linear-gradient(90deg, rgba(46, 204, 113, 0.08), rgba(46, 204, 113, 0.02));
+}
+.algo-row--selected:hover {
+    background: linear-gradient(90deg, rgba(46, 204, 113, 0.12), rgba(46, 204, 113, 0.04));
+}
+.algo-row--selected td:first-child {
+    border-left: 4px solid #2ecc71;
+}
+
+/* 排名 */
+.algo-rank {
+    display: inline-block;
+    font-weight: 700;
+    color: #667eea;
+    font-size: 1em;
+}
+
+/* 算法名称 */
+.algo-name {
+    font-weight: 600;
+    color: #2c3e50;
+}
+
+/* 预测值 */
+.algo-value {
+    font-weight: 700;
+    color: #3498db;
+    font-family: 'Courier New', monospace;
+}
+
+/* 置信度条 */
+.algo-conf-bar {
+    position: relative;
+    width: 120px;
+    height: 22px;
+    background: #f0f0f0;
+    border-radius: 11px;
+    overflow: hidden;
+    box-shadow: inset 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.algo-conf-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #667eea, #764ba2);
+    border-radius: 11px;
+    transition: width 0.3s ease;
+    box-shadow: 0 2px 4px rgba(102, 126, 234, 0.3);
+}
+
+.algo-conf-text {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    font-weight: 700;
+    color: #2c3e50;
+    text-shadow: 0 1px 2px rgba(255,255,255,0.8);
+}
+
+/* 状态标签 */
+.algo-status-badge {
+    display: inline-block;
+    padding: 4px 12px;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.algo-status--selected {
+    background: linear-gradient(135deg, #d4edda 0%, #c3e6cb 100%);
+    color: #155724;
+    box-shadow: 0 2px 6px rgba(40, 167, 69, 0.2);
+}
+
+.algo-status--candidate {
+    background: #f8f9fa;
+    color: #6c757d;
+    border: 1px solid #dee2e6;
+}
+
+/* 空状态 */
+.algo-empty {
+    text-align: center;
+    padding: 40px 20px;
+    color: #95a5a6;
+}
+.algo-empty span {
+    font-size: 3em;
+    display: block;
+    margin-bottom: 12px;
+    opacity: 0.6;
+}
+.algo-empty p {
+    font-size: 0.95em;
+    margin: 0;
+}
+
+/* 响应式 */
+@media (max-width: 768px) {
+    .algo-detail-box {
+        width: 95%;
+        max-height: 90vh;
+    }
+    .algo-detail-box__header {
+        padding: 18px 20px 14px;
+    }
+    .algo-detail-box__title {
+        font-size: 1.15em;
+    }
+    .algo-detail-box__body {
+        padding: 18px 20px;
+    }
+    .algo-detail-box__footer {
+        padding: 14px 20px;
+    }
+    
+    .algo-table {
+        font-size: 13px;
+    }
+    .algo-table th,
+    .algo-table td {
+        padding: 10px 8px;
+    }
+    
+    .algo-conf-bar {
+        width: 90px;
+    }
+    
+    .algo-status-badge {
+        font-size: 11px;
+        padding: 3px 10px;
+    }
+}
+
+@media (max-width: 480px) {
+    .algo-detail-box__header {
+        padding: 16px 18px 12px;
+    }
+    .algo-detail-box__body {
+        padding: 16px 18px;
+    }
+    
+    .algo-section__title {
+        font-size: 1em;
+    }
+    
+    .algo-table {
+        font-size: 12px;
+    }
+}

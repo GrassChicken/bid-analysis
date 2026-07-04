@@ -147,6 +147,31 @@ def api_clear_predictions():
 # 导出 API
 # ============================================================
 
+@history_bp.route('/api/prediction/<int:record_id>/algorithm-details')
+@login_required
+def api_prediction_algorithm_details(record_id):
+    """获取预测记录的 Top5 算法详情"""
+    user_id = session.get('user_id')
+    
+    # 验证记录归属
+    record = prediction_model.get_prediction_by_id(record_id, user_id)
+    if not record:
+        return jsonify({'success': False, 'error': '记录不存在'}), 404
+    
+    # 获取算法详情
+    k1_algorithms = prediction_model.get_algorithm_details(record_id, 'K1')
+    q1_algorithms = prediction_model.get_algorithm_details(record_id, 'Q1')
+    
+    return jsonify({
+        'success': True,
+        'record_id': record_id,
+        'project_name': record.get('project_name'),
+        'k1_algorithms': k1_algorithms,
+        'q1_algorithms': q1_algorithms,
+        'selected_k1_method': record.get('k1_method'),
+        'selected_q1_method': record.get('q1_method')
+    })
+
 @history_bp.route('/api/prediction/export/<int:record_id>/<format>')
 @login_required
 def api_export_prediction(record_id, format):
