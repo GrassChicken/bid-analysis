@@ -286,8 +286,11 @@ def api_accuracy_stats():
 @accuracy_bp.route('/api/accuracy/trend')
 @login_required
 def api_accuracy_trend():
-    """获取准确率趋势数据（按月）"""
+    """获取准确率趋势数据（按月）
+    支持按地点筛选：?location=xxx
+    """
     user_id = session.get('user_id')
+    location = request.args.get('location', '').strip()
     conn = prediction_model.db_path
     import sqlite3
 
@@ -308,15 +311,27 @@ def api_accuracy_trend():
     k1_counts = []
     
     if has_k1_actual:
-        cursor.execute('''
-            SELECT strftime('%Y-%m', checked_time) as month,
-                   k1_prediction, k1_actual
-            FROM prediction_records
-            WHERE user_id = ? AND accuracy_checked = 1
-            AND k1_prediction IS NOT NULL AND k1_actual IS NOT NULL
-            AND checked_time IS NOT NULL
-            ORDER BY month ASC
-        ''', (user_id,))
+        if location:
+            cursor.execute('''
+                SELECT strftime('%Y-%m', checked_time) as month,
+                       k1_prediction, k1_actual
+                FROM prediction_records
+                WHERE user_id = ? AND accuracy_checked = 1
+                AND k1_prediction IS NOT NULL AND k1_actual IS NOT NULL
+                AND checked_time IS NOT NULL
+                AND location_filter = ?
+                ORDER BY month ASC
+            ''', (user_id, location))
+        else:
+            cursor.execute('''
+                SELECT strftime('%Y-%m', checked_time) as month,
+                       k1_prediction, k1_actual
+                FROM prediction_records
+                WHERE user_id = ? AND accuracy_checked = 1
+                AND k1_prediction IS NOT NULL AND k1_actual IS NOT NULL
+                AND checked_time IS NOT NULL
+                ORDER BY month ASC
+            ''', (user_id,))
         
         monthly_data = {}
         for month, pred, actual in cursor.fetchall():
@@ -345,16 +360,29 @@ def api_accuracy_trend():
     q1_counts = []
     
     if has_q1_actual:
-        cursor.execute('''
-            SELECT strftime('%Y-%m', checked_time) as month,
-                   q1_prediction, q1_actual, method_prediction
-            FROM prediction_records
-            WHERE user_id = ? AND accuracy_checked = 1
-            AND q1_prediction IS NOT NULL AND q1_actual IS NOT NULL
-            AND (method_prediction IS NULL OR method_prediction != '1')
-            AND checked_time IS NOT NULL
-            ORDER BY month ASC
-        ''', (user_id,))
+        if location:
+            cursor.execute('''
+                SELECT strftime('%Y-%m', checked_time) as month,
+                       q1_prediction, q1_actual, method_prediction
+                FROM prediction_records
+                WHERE user_id = ? AND accuracy_checked = 1
+                AND q1_prediction IS NOT NULL AND q1_actual IS NOT NULL
+                AND (method_prediction IS NULL OR method_prediction != '1')
+                AND checked_time IS NOT NULL
+                AND location_filter = ?
+                ORDER BY month ASC
+            ''', (user_id, location))
+        else:
+            cursor.execute('''
+                SELECT strftime('%Y-%m', checked_time) as month,
+                       q1_prediction, q1_actual, method_prediction
+                FROM prediction_records
+                WHERE user_id = ? AND accuracy_checked = 1
+                AND q1_prediction IS NOT NULL AND q1_actual IS NOT NULL
+                AND (method_prediction IS NULL OR method_prediction != '1')
+                AND checked_time IS NOT NULL
+                ORDER BY month ASC
+            ''', (user_id,))
         
         monthly_data = {}
         for month, pred, actual, method in cursor.fetchall():
@@ -378,8 +406,34 @@ def api_accuracy_trend():
 
     db.close()
 
+    # 获取所有可用地点（有已对比记录的地点）
+    locations = []
+    if location:
+        db2 = sqlite3.connect(conn)
+        cursor2 = db2.cursor()
+        cursor2.execute('''
+            SELECT DISTINCT location_filter FROM prediction_records
+            WHERE user_id = ? AND accuracy_checked = 1
+            AND location_filter IS NOT NULL AND location_filter != ''
+            ORDER BY location_filter
+        ''', (user_id,))
+        locations = [row[0] for row in cursor2.fetchall()]
+        db2.close()
+    else:
+        db2 = sqlite3.connect(conn)
+        cursor2 = db2.cursor()
+        cursor2.execute('''
+            SELECT DISTINCT location_filter FROM prediction_records
+            WHERE user_id = ? AND accuracy_checked = 1
+            AND location_filter IS NOT NULL AND location_filter != ''
+            ORDER BY location_filter
+        ''', (user_id,))
+        locations = [row[0] for row in cursor2.fetchall()]
+        db2.close()
+
     return jsonify({
         'success': True,
+        'locations': locations,
         'trend': {
             'k1': {
                 'months': k1_months,

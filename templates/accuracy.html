@@ -100,6 +100,14 @@
             <h3>准确率趋势（近12个月）</h3>
             <p class="trend-panel__desc">展示每月 K1/Q1 精准率变化趋势</p>
         </div>
+        <div class="trend-panel__controls">
+            <div class="control-group">
+                <label>📍 地点筛选：</label>
+                <select id="trendLocationFilter" onchange="loadTrend()" class="control-select">
+                    <option value="">全部地点</option>
+                </select>
+            </div>
+        </div>
     </div>
     <div class="trend-panel__body">
         <canvas id="trendChart" height="300"></canvas>
@@ -271,6 +279,7 @@
         document.addEventListener('DOMContentLoaded', function() {
             loadStats();
             loadTrend();
+            initTrendLocationFilter();
             loadCompareData();
             loadRecords(currentPage);
         });
@@ -289,12 +298,38 @@
         // 加载趋势图
         var trendChartInstance = null;
         function loadTrend() {
-            fetch('/api/accuracy/trend')
+            var locationSelect = document.getElementById('trendLocationFilter');
+            var location = locationSelect ? locationSelect.value : '';
+            var url = '/api/accuracy/trend';
+            if (location) {
+                url += '?location=' + encodeURIComponent(location);
+            }
+            fetch(url)
                 .then(function(r) { return r.json(); })
                 .then(function(data) {
                     if (data.success) {
                         renderTrendChart(data.trend);
                     }
+                });
+        }
+
+        // 初始化趋势图地点筛选器
+        function initTrendLocationFilter() {
+            fetch('/api/accuracy/trend')
+                .then(function(r) { return r.json(); })
+                .then(function(data) {
+                    if (!data.success) return;
+                    var locations = data.locations || [];
+                    var select = document.getElementById('trendLocationFilter');
+                    if (!select) return;
+                    // 保留"全部地点"
+                    select.innerHTML = '<option value="">全部地点</option>';
+                    locations.forEach(function(loc) {
+                        var opt = document.createElement('option');
+                        opt.value = loc;
+                        opt.textContent = loc;
+                        select.appendChild(opt);
+                    });
                 });
         }
 
