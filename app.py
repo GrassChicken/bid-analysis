@@ -38,6 +38,7 @@ def create_app():
     from routes.operation_log import operation_log_bp
     from routes.accuracy import accuracy_bp
     from routes.user_admin import user_admin_bp
+    from routes.algorithm_ranking import algorithm_bp
     from routes.diagnosis import diagnosis_bp
     from routes.backup import backup_bp
     
@@ -51,6 +52,7 @@ def create_app():
     app.register_blueprint(operation_log_bp)
     app.register_blueprint(accuracy_bp)
     app.register_blueprint(user_admin_bp)
+    app.register_blueprint(algorithm_bp)
     app.register_blueprint(diagnosis_bp)
     app.register_blueprint(backup_bp)
 
