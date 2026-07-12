@@ -15,6 +15,7 @@ from routes.auth import login_required
 import sqlite3
 from datetime import datetime
 import os
+import logging
 
 predict_bp = Blueprint('predict', __name__)
 
@@ -71,12 +72,36 @@ def api_predict():
         offset=0
     )
 
+    # ================= 新增日志打印代码 =================
+    logging.info(f"==== 开始打印排序后的 records (共 {len(records)} 条) ====")
+    for idx, r in enumerate(records[:5]):
+        # 直接打印带有索引的完整元组
+        logging.info(f"[{idx}] {r}")
+
+    logging.info("==== records 打印结束 ====")
+
     if not records:
         return jsonify({'success': False, 'error': '没有足够的数据进行预测'})
 
     # 【修复】按开标日期+开标时间升序排序，确保时间序列分析正确
-    # 原始数据按 import_time DESC 排序，但预测算法需要按时间正序
-    records = sorted(records, key=lambda r: (r[3] or '', r[4] or ''))
+    # 第三排序键使用记录 ID（r[0]），保证日期+时间相同时保留所有记录并按数据库顺序排列
+    pre_sort_count = len(records)
+    records = sorted(records, key=lambda r: (r[3] or '', r[4] or '', r[2] or ''))
+    assert len(records) == pre_sort_count, f"排序前后记录数不一致: {pre_sort_count} -> {len(records)}"
+    total_count = len(records)
+    logging.info(f"排序完成，总记录数: {total_count}")
+    # 打印排序结果用于调试
+    if total_count > 6:
+        logging.info(f"排序后前3条记录（最早开标）:")
+        for i, r in enumerate(records[:3]):
+            logging.info(f"  [{i}] ID={r[0]}, 日期={r[3]}, 时间={r[4]}, 项目={r[2]}, K2={r[7]}")
+        logging.info(f"排序后最后3条记录（最晚开标）:")
+        for i, r in enumerate(records[-3:], start=total_count - 3):
+            logging.info(f"  [{i}] ID={r[0]}, 日期={r[3]}, 时间={r[4]}, 项目={r[2]}, K2={r[7]}")
+    else:
+        logging.info(f"排序后全部记录（共{total_count}条）:")
+        for i, r in enumerate(records):
+            logging.info(f"  [{i}] ID={r[0]}, 日期={r[3]}, 时间={r[4]}, 项目={r[2]}, K2={r[7]}")
 
     # 提取数据（records 是元组列表）
     # 列顺序: id(0), user_id(1), project_name(2), bid_date(3), bid_time(4),
@@ -266,8 +291,20 @@ def api_predict_update(record_id):
         return jsonify({'success': False, 'error': '没有足够的数据进行预测'})
 
     # 【修复】按开标日期+开标时间升序排序，确保时间序列分析正确
-    # 原始数据按 import_time DESC 排序，但预测算法需要按时间正序
-    records = sorted(records, key=lambda r: (r[3] or '', r[4] or ''))
+    # 第三排序键使用记录 ID（r[0]），保证日期+时间相同时保留所有记录并按数据库顺序排列
+    records = sorted(records, key=lambda r: (r[3] or '', r[4] or '', r[2] or ''))
+    logging.info(f"[update] 排序完成，总记录数: {len(records)}")
+    if len(records) > 6:
+        logging.info(f"[update] 排序后前3条记录（最早开标）:")
+        for i, r in enumerate(records[:3]):
+            logging.info(f"  [{i}] ID={r[0]}, 日期={r[3]}, 时间={r[4]}, 项目={r[2]}, K2={r[7]}")
+        logging.info(f"[update] 排序后最后3条记录（最晚开标）:")
+        for i, r in enumerate(records[-3:], start=len(records) - 3):
+            logging.info(f"  [{i}] ID={r[0]}, 日期={r[3]}, 时间={r[4]}, 项目={r[2]}, K2={r[7]}")
+    else:
+        logging.info(f"[update] 排序后全部记录（共{len(records)}条）:")
+        for i, r in enumerate(records):
+            logging.info(f"  [{i}] ID={r[0]}, 日期={r[3]}, 时间={r[4]}, 项目={r[2]}, K2={r[7]}")
 
     method_values = [r[6] for r in records if r[6]]
     k2_values = [float(r[7]) for r in records if r[7] and str(r[7]).replace('.', '').isdigit()]

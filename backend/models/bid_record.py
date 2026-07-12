@@ -141,7 +141,7 @@ class BidRecord:
                 query += ' AND bid_date <= ?'
                 params.append(filters['date_to'])
         
-        query += ' ORDER BY bid_date DESC, bid_time DESC LIMIT ? OFFSET ?'
+        query += ' ORDER BY bid_date DESC, bid_time DESC , project_name DESC LIMIT ? OFFSET ?'
         params.extend([limit, offset])
         
         cursor.execute(query, params)
