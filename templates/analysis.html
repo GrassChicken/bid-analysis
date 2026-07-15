@@ -252,13 +252,172 @@
 
 <!-- 趋势分析内容 -->
 <div class="analysis-content" id="trendContent" style="display:none;">
-    <div class="placeholder-state">
-        <div class="placeholder-icon">📉</div>
-        <div class="placeholder-text">趋势分析功能开发中...</div>
+    <!-- 趋势分析筛选面板 -->
+    <div class="filter-panel">
+        <div class="filter-header">
+            <span class="filter-icon">📉</span>
+            <span>趋势分析筛选条件</span>
+        </div>
+        <div class="filter-body">
+            <!-- 第一行：参数类型和时间粒度 -->
+            <div class="filter-row">
+                <div class="filter-group">
+                    <label class="filter-label">参数类型（可多选）</label>
+                    <div class="checkbox-group">
+                        <label><input type="checkbox" id="trendParamK1" value="k1" checked onchange="loadTrendData()"> K1</label>
+                        <label><input type="checkbox" id="trendParamK2" value="k2" onchange="loadTrendData()"> K2</label>
+                        <label><input type="checkbox" id="trendParamQ1" value="q1" onchange="loadTrendData()"> Q1</label>
+                    </div>
+                </div>
+                <div class="filter-group">
+                    <label class="filter-label">时间粒度</label>
+                    <select id="trendGranularity" class="filter-select" onchange="loadTrendData()">
+                        <option value="day">日</option>
+                        <option value="week">周</option>
+                        <option value="month" selected>月</option>
+                        <option value="quarter">季度</option>
+                    </select>
+                </div>
+            </div>
+            
+            <!-- 第二行：地区和方法 -->
+            <div class="filter-row">
+                <div class="filter-group">
+                    <label class="filter-label">地区（可多选）</label>
+                    <select id="trendLocations" class="filter-select" multiple size="3" onchange="loadTrendData()">
+                        <option value="">全部地区</option>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label class="filter-label">方法类别（可多选）</label>
+                    <select id="trendMethods" class="filter-select" multiple size="3" onchange="loadTrendData()">
+                        <option value="">全部方法</option>
+                    </select>
+                </div>
+            </div>
+            
+            <!-- 第三行：日期范围和移动平均 -->
+            <div class="filter-row">
+                <div class="filter-group">
+                    <label class="filter-label">开始日期</label>
+                    <input type="date" id="trendDateFrom" class="filter-input" onchange="loadTrendData()">
+                </div>
+                <div class="filter-group">
+                    <label class="filter-label">结束日期</label>
+                    <input type="date" id="trendDateTo" class="filter-input" onchange="loadTrendData()">
+                </div>
+                <div class="filter-group">
+                    <label class="filter-label">移动平均</label>
+                    <select id="trendMovingAvg" class="filter-select" onchange="loadTrendData()">
+                        <option value="">不使用</option>
+                        <option value="7">7日移动平均</option>
+                        <option value="30">30日移动平均</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 统计摘要卡片 -->
+    <div class="stats-summary" id="trendStatsSummary" style="display:none;">
+        <div class="stat-card">
+            <div class="stat-icon">📊</div>
+            <div class="stat-info">
+                <div class="stat-value" id="trendStatCount">0</div>
+                <div class="stat-label">数据点数</div>
+            </div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon">📐</div>
+            <div class="stat-info">
+                <div class="stat-value" id="trendStatMean">0</div>
+                <div class="stat-label">平均值</div>
+            </div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon">📈</div>
+            <div class="stat-info">
+                <div class="stat-value" id="trendStatMax">0</div>
+                <div class="stat-label">最大值</div>
+            </div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon">📉</div>
+            <div class="stat-info">
+                <div class="stat-value" id="trendStatMin">0</div>
+                <div class="stat-label">最小值</div>
+            </div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon">📏</div>
+            <div class="stat-info">
+                <div class="stat-value" id="trendStatStd">0</div>
+                <div class="stat-label">标准差</div>
+            </div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon">🎯</div>
+            <div class="stat-info">
+                <div class="stat-value" id="trendStatDirection">-</div>
+                <div class="stat-label">趋势方向</div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 参数趋势对比图 -->
+    <div class="chart-container">
+        <h3 class="chart-title">📈 参数趋势对比图</h3>
+        <div id="trendChart" style="width: 100%; height: 400px;"></div>
+    </div>
+    
+    <!-- 地区对比趋势图 -->
+    <div class="chart-container">
+        <h3 class="chart-title">🌍 地区对比趋势图</h3>
+        <div class="filter-row" style="margin-bottom: 15px;">
+            <div class="filter-group">
+                <label class="filter-label">选择参数</label>
+                <select id="regionCompareParam" class="filter-select" onchange="loadRegionCompare()">
+                    <option value="k1">K1</option>
+                    <option value="k2">K2</option>
+                    <option value="q1">Q1</option>
+                </select>
+            </div>
+            <div class="filter-group">
+                <label class="filter-label">选择地区（可多选）</label>
+                <select id="regionCompareLocations" class="filter-select" multiple size="3" onchange="loadRegionCompare()">
+                    <option value="">全部地区</option>
+                </select>
+            </div>
+        </div>
+        <div id="regionCompareChart" style="width: 100%; height: 400px;"></div>
+    </div>
+    
+    <!-- 方法类别趋势分析 -->
+    <div class="chart-container" style="margin-top: 30px;">
+        <h3 class="chart-title">🔧 方法类别趋势分析</h3>
+        <div class="filter-row" style="margin-bottom: 15px;">
+            <div class="filter-group">
+                <label class="filter-label">选择参数</label>
+                <select id="methodTrendParam" class="filter-select" onchange="loadMethodTrend()">
+                    <option value="k1">K1</option>
+                    <option value="k2">K2</option>
+                    <option value="q1">Q1</option>
+                </select>
+            </div>
+            <div class="filter-group">
+                <label class="filter-label">显示模式</label>
+                <select id="methodTrendMode" class="filter-select" onchange="loadMethodTrend()">
+                    <option value="line">折线图</option>
+                    <option value="bar">柱状图</option>
+                </select>
+            </div>
+        </div>
+        <div id="methodTrendChart" style="width: 100%; height: 400px;"></div>
     </div>
 </div>
 {% endblock %}
 
 {% block extra_scripts %}
     <script src="/static/js/pages/analysis.js"></script>
+    <script src="/static/js/pages/analysis_trend.js"></script>
 {% endblock %}

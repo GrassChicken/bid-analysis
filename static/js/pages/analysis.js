@@ -6,7 +6,11 @@
 let histogramChart = null;
 let boxplotChart = null;
 let heatmapChart = null;
+let trendChart = null;
+let regionCompareChart = null;
+let methodTrendChart = null;
 let heatmapInitialized = false;
+let trendInitialized = false;
 
 // 页面加载完成后初始化
 document.addEventListener('DOMContentLoaded', function() {
@@ -77,6 +81,16 @@ function switchTab(tabName) {
         setTimeout(() => {
             initHeatmap();
             loadHeatmap();
+        }, 100);
+    }
+    
+    // 切换到趋势分析时初始化并加载数据
+    if (tabName === 'trend') {
+        setTimeout(() => {
+            initTrendCharts();
+            loadTrendData();
+            loadRegionCompare();
+            loadMethodTrend();
         }, 100);
     }
 }
