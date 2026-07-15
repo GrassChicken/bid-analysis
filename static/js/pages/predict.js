@@ -194,6 +194,9 @@ function displayResults(data) {
     const resultGrid = document.getElementById('resultGrid');
     let html = '';
 
+    // 渲染雷达图
+    renderRadarChart(data);
+
     // 获取预测的方法类别
     var predictedMethod = '';
     if (data.method_prediction) {
@@ -535,4 +538,145 @@ function escapeHtml(str) {
     var div = document.createElement('div');
     div.appendChild(document.createTextNode(str || ''));
     return div.innerHTML;
+}
+
+/**
+ * 渲染算法置信度雷达图
+ */
+function renderRadarChart(data) {
+    var radarContainer = document.getElementById('radarChart');
+    if (!radarContainer) return;
+
+    // 收集所有算法置信度
+    var algorithmScores = [];
+    
+    // K1 算法
+    if (data.k1_all && data.k1_all.length > 0) {
+        data.k1_all.forEach(function(item) {
+            algorithmScores.push({
+                name: 'K1-' + item.method,
+                confidence: item.confidence * 100
+            });
+        });
+    }
+    
+    // Q1 算法
+    if (data.q1_all && data.q1_all.length > 0) {
+        data.q1_all.forEach(function(item) {
+            algorithmScores.push({
+                name: 'Q1-' + item.method,
+                confidence: item.confidence * 100
+            });
+        });
+    }
+    
+    // 方法预测
+    if (data.method_all && data.method_all.length > 0) {
+        data.method_all.forEach(function(item) {
+            algorithmScores.push({
+                name: '方法-' + item.method,
+                confidence: item.confidence * 100
+            });
+        });
+    }
+    
+    if (algorithmScores.length === 0) {
+        radarContainer.style.display = 'none';
+        return;
+    }
+    
+    radarContainer.style.display = 'block';
+    
+    // 限制显示前 8 个算法，避免雷达图过于拥挤
+    algorithmScores = algorithmScores.slice(0, 8);
+    
+    // 初始化 ECharts
+    var chart = echarts.init(radarContainer);
+    
+    // 构建指标
+    var indicator = algorithmScores.map(function(item) {
+        return {
+            name: item.name,
+            max: 100
+        };
+    });
+    
+    // 构建数据
+    var values = algorithmScores.map(function(item) {
+        return item.confidence;
+    });
+    
+    // 配置项
+    var option = {
+        tooltip: {
+            trigger: 'item',
+            formatter: function(params) {
+                var html = '<div style="font-weight:bold;margin-bottom:8px;">' + params.name + '</div>';
+                params.value.forEach(function(value, index) {
+                    html += '<div>' + algorithmScores[index].name + ': ' + value.toFixed(1) + '%</div>';
+                });
+                return html;
+            }
+        },
+        legend: {
+            data: ['当前预测'],
+            bottom: 0,
+            textStyle: {
+                fontSize: 12
+            }
+        },
+        radar: {
+            indicator: indicator,
+            shape: 'polygon',
+            splitNumber: 5,
+            axisName: {
+                color: '#999',
+                fontSize: 11
+            },
+            splitLine: {
+                lineStyle: {
+                    color: ['rgba(255, 255, 255, 0.1)', 'rgba(255, 255, 255, 0.2)', 
+                            'rgba(255, 255, 255, 0.3)', 'rgba(255, 255, 255, 0.4)', 'rgba(255, 255, 255, 0.5)']
+                }
+            },
+            splitArea: {
+                show: true,
+                areaStyle: {
+                    color: ['rgba(255, 255, 255, 0.02)', 'rgba(255, 255, 255, 0.05)']
+                }
+            },
+            axisLine: {
+                lineStyle: {
+                    color: 'rgba(255, 255, 255, 0.3)'
+                }
+            }
+        },
+        series: [{
+            name: '算法置信度',
+            type: 'radar',
+            data: [{
+                value: values,
+                name: '当前预测',
+                symbol: 'circle',
+                symbolSize: 6,
+                lineStyle: {
+                    color: '#5470c6',
+                    width: 2
+                },
+                areaStyle: {
+                    color: 'rgba(84, 112, 198, 0.3)'
+                },
+                itemStyle: {
+                    color: '#5470c6'
+                }
+            }]
+        }]
+    };
+    
+    chart.setOption(option);
+    
+    // 响应式
+    window.addEventListener('resize', function() {
+        chart.resize();
+    });
 }

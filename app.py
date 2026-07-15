@@ -41,6 +41,7 @@ def create_app():
     from routes.algorithm_ranking import algorithm_bp
     from routes.diagnosis import diagnosis_bp
     from routes.backup import backup_bp
+    from routes.analysis import analysis_bp
     
     app.register_blueprint(auth_bp)
     app.register_blueprint(dashboard_bp)
@@ -55,6 +56,7 @@ def create_app():
     app.register_blueprint(algorithm_bp)
     app.register_blueprint(diagnosis_bp)
     app.register_blueprint(backup_bp)
+    app.register_blueprint(analysis_bp)
 
     # 全局请求前处理 - 检查登录状态
     @app.before_request

@@ -1,0 +1,264 @@
+{% extends "base.html" %}
+
+{% block title %}📊 数据分析中心 - 工程开标数据智能分析平台 V6.0{% endblock %}
+
+{% block page_title %}📊 数据分析中心{% endblock %}
+
+{% block header_actions %}
+    <button class="btn btn-history" onclick="window.location.href='/dashboard'">🏠 返回仪表盘</button>
+    <button class="btn btn-predict" onclick="window.location.href='/predict'">🎯 智能预测</button>
+{% endblock %}
+
+{% block extra_head %}
+    <link rel="stylesheet" href="/static/css/analysis.css">
+{% endblock %}
+
+{% block content %}
+<!-- 页面头部横幅 -->
+<div class="hero-banner">
+    <div class="hero-icon">📊</div>
+    <div class="hero-text">
+        <h2>数据分析中心</h2>
+        <p>深度洞察开标数据分布规律，助力精准预测</p>
+    </div>
+    <div class="hero-decoration"></div>
+</div>
+
+<!-- Tab 切换 -->
+<div class="analysis-tabs">
+    <button class="analysis-tab active" data-tab="distribution" onclick="switchTab('distribution')">
+        <span class="tab-icon">📈</span>
+        <span class="tab-text">分布分析</span>
+    </button>
+    <button class="analysis-tab" data-tab="heatmap" onclick="switchTab('heatmap')">
+        <span class="tab-icon">🗺️</span>
+        <span class="tab-text">热力图</span>
+    </button>
+    <button class="analysis-tab" data-tab="trend" onclick="switchTab('trend')">
+        <span class="tab-icon">📉</span>
+        <span class="tab-text">趋势分析</span>
+    </button>
+</div>
+
+<!-- 筛选条件 -->
+<div class="filter-panel">
+    <div class="filter-header">
+        <span class="filter-icon">🔍</span>
+        <span>筛选条件</span>
+    </div>
+    <div class="filter-body">
+        <div class="filter-row">
+            <div class="filter-group">
+                <label class="filter-label">参数类型</label>
+                <select id="paramType" class="filter-select" onchange="loadDistribution()">
+                    <option value="k1">K1 值</option>
+                    <option value="k2">K2 值</option>
+                    <option value="q1">Q1 值</option>
+                </select>
+            </div>
+            <div class="filter-group">
+                <label class="filter-label">地区</label>
+                <select id="locationFilter" class="filter-select" onchange="loadDistribution()">
+                    <option value="">全部地区</option>
+                </select>
+            </div>
+            <div class="filter-group">
+                <label class="filter-label">方法类别</label>
+                <select id="methodFilter" class="filter-select" onchange="loadDistribution()">
+                    <option value="">全部方法</option>
+                    <option value="1">方法 1</option>
+                    <option value="2">方法 2</option>
+                </select>
+            </div>
+            <div class="filter-group">
+                <label class="filter-label">开始日期</label>
+                <input type="date" id="dateFrom" class="filter-input" onchange="loadDistribution()">
+            </div>
+            <div class="filter-group">
+                <label class="filter-label">结束日期</label>
+                <input type="date" id="dateTo" class="filter-input" onchange="loadDistribution()">
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 分布分析内容 -->
+<div class="analysis-content" id="distributionContent">
+    <!-- 统计摘要卡片 -->
+    <div class="stats-summary" id="statsSummary" style="display:none;">
+        <div class="stat-card">
+            <div class="stat-icon">📊</div>
+            <div class="stat-info">
+                <div class="stat-value" id="statCount">-</div>
+                <div class="stat-label">数据量</div>
+            </div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon">📐</div>
+            <div class="stat-info">
+                <div class="stat-value" id="statMean">-</div>
+                <div class="stat-label">平均值</div>
+            </div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon">📏</div>
+            <div class="stat-info">
+                <div class="stat-value" id="statMedian">-</div>
+                <div class="stat-label">中位数</div>
+            </div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon">📈</div>
+            <div class="stat-info">
+                <div class="stat-value" id="statStd">-</div>
+                <div class="stat-label">标准差</div>
+            </div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon">📉</div>
+            <div class="stat-info">
+                <div class="stat-value" id="statSkewness">-</div>
+                <div class="stat-label">偏度</div>
+            </div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon">📊</div>
+            <div class="stat-info">
+                <div class="stat-value" id="statKurtosis">-</div>
+                <div class="stat-label">峰度</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 图表区域 -->
+    <div class="charts-grid">
+        <div class="chart-card">
+            <div class="chart-title">📊 参数分布直方图</div>
+            <div class="chart-container" id="histogramChart"></div>
+        </div>
+        <div class="chart-card">
+            <div class="chart-title">📦 箱线图（按地区分组）</div>
+            <div class="chart-container" id="boxplotChart"></div>
+        </div>
+    </div>
+
+    <!-- 加载状态 -->
+    <div class="loading-state" id="loadingState" style="display:none;">
+        <div class="spinner"></div>
+        <div class="loading-text">正在分析数据...</div>
+    </div>
+
+    <!-- 空状态 -->
+    <div class="empty-state" id="emptyState" style="display:none;">
+        <div class="empty-icon">📭</div>
+        <div class="empty-text" id="emptyText">暂无数据</div>
+    </div>
+</div>
+
+<!-- 热力图内容 -->
+<div class="analysis-content" id="heatmapContent" style="display:none;">
+    <!-- 热力图筛选条件 -->
+    <div class="filter-panel" style="margin-bottom: 20px;">
+        <div class="filter-header">
+            <span class="filter-icon">🎯</span>
+            <span>热力图筛选</span>
+        </div>
+        <div class="filter-body">
+            <div class="filter-row">
+                <div class="filter-group">
+                    <label class="filter-label">参数类型</label>
+                    <select id="heatmapParamType" class="filter-select" onchange="loadHeatmap()">
+                        <option value="k1">K1 值</option>
+                        <option value="k2">K2 值</option>
+                        <option value="q1">Q1 值</option>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label class="filter-label">分析维度</label>
+                    <select id="heatmapDimension" class="filter-select" onchange="loadHeatmap()">
+                        <option value="location_time">地区 × 时间段（月份）</option>
+                        <option value="location_method">地区 × 方法类别</option>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label class="filter-label">统计指标</label>
+                    <select id="heatmapMetric" class="filter-select" onchange="loadHeatmap()">
+                        <option value="mean">均值（颜色深浅表示数值大小）</option>
+                        <option value="count">频次（颜色深浅表示数据量多少）</option>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label class="filter-label">开始日期</label>
+                    <input type="date" id="heatmapDateFrom" class="filter-input" onchange="loadHeatmap()">
+                </div>
+                <div class="filter-group">
+                    <label class="filter-label">结束日期</label>
+                    <input type="date" id="heatmapDateTo" class="filter-input" onchange="loadHeatmap()">
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 热力图统计摘要 -->
+    <div class="stats-summary" id="heatmapStats" style="display:none;">
+        <div class="stat-card">
+            <div class="stat-icon">🗺️</div>
+            <div class="stat-info">
+                <div class="stat-value" id="heatmapCellCount">-</div>
+                <div class="stat-label">数据格数</div>
+            </div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon">📈</div>
+            <div class="stat-info">
+                <div class="stat-value" id="heatmapMaxVal">-</div>
+                <div class="stat-label">最大值</div>
+            </div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon">📉</div>
+            <div class="stat-info">
+                <div class="stat-value" id="heatmapMinVal">-</div>
+                <div class="stat-label">最小值</div>
+            </div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon">📐</div>
+            <div class="stat-info">
+                <div class="stat-value" id="heatmapAvgVal">-</div>
+                <div class="stat-label">平均值</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 热力图图表 -->
+    <div class="chart-card">
+        <div class="chart-title" id="heatmapTitle">🗺️ 参数热力图</div>
+        <div class="chart-container" id="heatmapChart" style="height: 500px;"></div>
+    </div>
+
+    <!-- 加载状态 -->
+    <div class="loading-state" id="heatmapLoading" style="display:none;">
+        <div class="spinner"></div>
+        <div class="loading-text">正在生成热力图...</div>
+    </div>
+
+    <!-- 空状态 -->
+    <div class="empty-state" id="heatmapEmpty" style="display:none;">
+        <div class="empty-icon">📭</div>
+        <div class="empty-text" id="heatmapEmptyText">暂无数据</div>
+    </div>
+</div>
+
+<!-- 趋势分析内容 -->
+<div class="analysis-content" id="trendContent" style="display:none;">
+    <div class="placeholder-state">
+        <div class="placeholder-icon">📉</div>
+        <div class="placeholder-text">趋势分析功能开发中...</div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+    <script src="/static/js/pages/analysis.js"></script>
+{% endblock %}
