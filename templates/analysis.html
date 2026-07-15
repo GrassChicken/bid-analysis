@@ -40,50 +40,50 @@
     </button>
 </div>
 
-<!-- 筛选条件 -->
-<div class="filter-panel">
-    <div class="filter-header">
-        <span class="filter-icon">🔍</span>
-        <span>筛选条件</span>
-    </div>
-    <div class="filter-body">
-        <div class="filter-row">
-            <div class="filter-group">
-                <label class="filter-label">参数类型</label>
-                <select id="paramType" class="filter-select" onchange="loadDistribution()">
-                    <option value="k1">K1 值</option>
-                    <option value="k2">K2 值</option>
-                    <option value="q1">Q1 值</option>
-                </select>
-            </div>
-            <div class="filter-group">
-                <label class="filter-label">地区</label>
-                <select id="locationFilter" class="filter-select" onchange="loadDistribution()">
-                    <option value="">全部地区</option>
-                </select>
-            </div>
-            <div class="filter-group">
-                <label class="filter-label">方法类别</label>
-                <select id="methodFilter" class="filter-select" onchange="loadDistribution()">
-                    <option value="">全部方法</option>
-                    <option value="1">方法 1</option>
-                    <option value="2">方法 2</option>
-                </select>
-            </div>
-            <div class="filter-group">
-                <label class="filter-label">开始日期</label>
-                <input type="date" id="dateFrom" class="filter-input" onchange="loadDistribution()">
-            </div>
-            <div class="filter-group">
-                <label class="filter-label">结束日期</label>
-                <input type="date" id="dateTo" class="filter-input" onchange="loadDistribution()">
+<!-- 分布分析内容 -->
+<div class="analysis-content" id="distributionContent">
+    <!-- 筛选条件 -->
+    <div class="filter-panel">
+        <div class="filter-header">
+            <span class="filter-icon">🔍</span>
+            <span>筛选条件</span>
+        </div>
+        <div class="filter-body">
+            <div class="filter-row">
+                <div class="filter-group">
+                    <label class="filter-label">参数类型</label>
+                    <select id="paramType" class="filter-select" onchange="loadDistribution()">
+                        <option value="k1">K1 值</option>
+                        <option value="k2">K2 值</option>
+                        <option value="q1">Q1 值</option>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label class="filter-label">地区</label>
+                    <select id="locationFilter" class="filter-select" onchange="loadDistribution()">
+                        <option value="">全部地区</option>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label class="filter-label">方法类别</label>
+                    <select id="methodFilter" class="filter-select" onchange="loadDistribution()">
+                        <option value="">全部方法</option>
+                        <option value="1">方法 1</option>
+                        <option value="2">方法 2</option>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label class="filter-label">开始日期</label>
+                    <input type="date" id="dateFrom" class="filter-input" onchange="loadDistribution()">
+                </div>
+                <div class="filter-group">
+                    <label class="filter-label">结束日期</label>
+                    <input type="date" id="dateTo" class="filter-input" onchange="loadDistribution()">
+                </div>
             </div>
         </div>
     </div>
-</div>
 
-<!-- 分布分析内容 -->
-<div class="analysis-content" id="distributionContent">
     <!-- 统计摘要卡片 -->
     <div class="stats-summary" id="statsSummary" style="display:none;">
         <div class="stat-card">
