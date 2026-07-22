@@ -122,8 +122,13 @@ else
     exit 1
 fi
 
-# 启动服务（日志由 Python logging 模块管理，输出到 log/ 目录）
-nohup python3 $START_CMD >> $WORK_DIR/log/bid-v6.log 2>&1 &
+# 启动服务（使用 Python 3.11 虚拟环境）
+if [ -f "$WORK_DIR/.venv311/bin/python" ]; then
+    PYTHON_CMD="$WORK_DIR/.venv311/bin/python"
+else
+    PYTHON_CMD="python3"
+fi
+nohup $PYTHON_CMD $START_CMD >> $WORK_DIR/log/bid-v6.log 2>&1 &
 V6_PID=$!
 echo $V6_PID > bid-v6.pid
 echo "📝 $SERVICE_TYPE架构 - 进程 PID: $V6_PID"
